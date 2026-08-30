@@ -23,6 +23,28 @@ import { carregarInscricao } from '../inscricaoDados'
  */
 
 const CSS = `
+.tl { display: flex; flex-direction: column; gap: 16px; min-height: 100vh; justify-content: flex-start; }
+.tl-app { display: flex; flex-direction: column; gap: 16px; width: 100%; }
+.tl-esq, .tl-dir { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.tl-rodape { font-size: 12px; color: var(--ink-3); line-height: 1.5; padding: 0 2px; }
+@media (min-width: 1081px) {
+  .tl { justify-content: center; max-width: 1120px; margin: 0 auto; }
+  .tl-app {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .92fr);
+    column-gap: clamp(28px, 3.2vw, 56px); row-gap: 20px; align-content: center;
+  }
+  .tl-app > .rail-head, .tl-app > .demo-bar { grid-column: 1; }
+  .tl-app .icon-btn.vazio { display: none; }
+  .tl-esq { grid-column: 1; align-self: center; }
+  .tl-dir {
+    grid-column: 2; background: var(--surface); border: 1px solid rgba(16, 32, 58, .06);
+    border-radius: var(--r-frame); box-shadow: var(--shadow-lg); padding: clamp(18px, 1.8vw, 26px);
+  }
+  .tl-app > .tl-rodape { grid-column: 1; max-width: 52ch; }
+  .tl .titulo h1 { font-size: clamp(28px, 2.6vw, 38px); }
+  .tl .lede { max-width: 46ch; font-size: 15px; }
+}
+@media (min-width: 1800px) { .tl { max-width: 1280px; } }
 .cv { display: flex; flex-direction: column; gap: 16px; }
 .cv-sub {
   display: flex; gap: 7px; align-items: center; flex-wrap: wrap;
@@ -86,13 +108,13 @@ export default function Convocacao() {
   const oferta = dados?.opcoes?.[0] || null
 
   return (
-    <div className="pagina estreita conclusao">
+    <div className="pagina tl">
       <style>{CSS}</style>
-      <div className="app"><div className="rail">
+      <div className="tl-app">
         <Cabecalho />
         <AvisoDemo />
 
-        <div className="conc-esq">
+        <div className="tl-esq">
           <div className="titulo">
             <h1>
               {sub === 'convocada'
@@ -123,7 +145,7 @@ export default function Convocacao() {
           </div>
         </div>
 
-        <div className="conc-dir">
+        <div className="tl-dir">
           {erro ? (
             <Erro>{erro}</Erro>
           ) : !dados ? (
@@ -207,11 +229,11 @@ export default function Convocacao() {
           )}
         </div>
 
-        <p className="rodape">
+        <p className="tl-rodape">
           Protótipo do Claude Impact Lab. A convocação é uma demonstração: o sistema não tem
           endpoint de chamada de vaga, e a unidade mostrada é a sua 1ª opção, não um resultado.
         </p>
-      </div></div>
+      </div>
     </div>
   )
 }
