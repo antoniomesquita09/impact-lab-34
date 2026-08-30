@@ -112,3 +112,27 @@ func TestRanquearListaVazia(t *testing.T) {
 		t.Fatalf("lista vazia → %d", len(out))
 	}
 }
+
+func TestPPorPosicaoBateComPPctENaoCresce(t *testing.T) {
+	cands := []Candidata{
+		{Cod: "perto-forte", Km: 0.5, TaxaRef: f(0.90), NRef: 200},
+		{Cod: "media", Km: 3.0, TaxaRef: f(0.34), NRef: 100},
+		{Cod: "longe-fraca", Km: 20, TaxaRef: f(0.01), NRef: 500},
+		{Cod: "sem-historico", Km: 4.0, TaxaRef: nil, NRef: 0},
+	}
+	for _, s := range Ranquear(ref(), cands, 5) {
+		if s.PPorPosicao[0] != s.PPct {
+			t.Fatalf("%s: p_por_posicao[0]=%d ≠ p_pct=%d", s.Cod, s.PPorPosicao[0], s.PPct)
+		}
+		for i := 1; i < 5; i++ {
+			// não-crescente, não estritamente: no piso 2% e no teto 95% duas
+			// posições podem empatar legitimamente, e empatar é honesto.
+			if s.PPorPosicao[i] > s.PPorPosicao[i-1] {
+				t.Fatalf("%s: chance sobe da %dª para a %dª: %v", s.Cod, i, i+1, s.PPorPosicao)
+			}
+		}
+		if s.PPorPosicao[0] < 2 || s.PPorPosicao[0] > 95 {
+			t.Fatalf("%s: fora do piso/teto: %v", s.Cod, s.PPorPosicao)
+		}
+	}
+}

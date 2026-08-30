@@ -26,8 +26,12 @@ type Sugestao struct {
 	Km     float64 `json:"km"`
 	P      float64 `json:"p"`
 	PPct   int     `json:"p_pct"`
-	Fator  float64 `json:"fator"`
-	Motivo string  `json:"motivo"`
+	// PPorPosicao traz a chance em cada uma das 5 posições da lista. p_pct é a
+	// da 1ª — bom para comparar unidades entre si, errado para uma tela onde a
+	// família reordena as opções e a posição muda.
+	PPorPosicao [5]int  `json:"p_por_posicao"`
+	Fator       float64 `json:"fator"`
+	Motivo      string  `json:"motivo"`
 }
 
 // amostraMinima: abaixo disso a taxa histórica da unidade é ruído, e o fator vira 1.
@@ -84,9 +88,13 @@ func Ranquear(ref *modelo.Ref, cands []Candidata, top int) []Sugestao {
 	for _, c := range cands {
 		f := Fator(c.TaxaRef, c.NRef, ref.Mediana)
 		p := Probabilidade(ref, c.TaxaRef, c.NRef, c.Km, 1)
+		var pp [5]int
+		for i := 1; i <= 5; i++ {
+			pp[i-1] = int(math.Round(Probabilidade(ref, c.TaxaRef, c.NRef, c.Km, i) * 100))
+		}
 		out = append(out, Sugestao{
 			Cod: c.Cod, Nome: c.Nome, Bairro: c.Bairro, Lat: c.Lat, Lon: c.Lon,
-			Km: math.Round(c.Km*100) / 100, P: p, PPct: int(math.Round(p * 100)),
+			Km: math.Round(c.Km*100) / 100, P: p, PPct: int(math.Round(p * 100)), PPorPosicao: pp,
 			Fator: math.Round(f*100) / 100, Motivo: motivo(c.Km, f),
 		})
 	}
