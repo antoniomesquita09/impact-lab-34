@@ -9,6 +9,7 @@ import (
 
 	"github.com/antoniomesquita09/impact-lab-34/back/geo"
 	"github.com/antoniomesquita09/impact-lab-34/back/modelo"
+	"github.com/antoniomesquita09/impact-lab-34/back/notifica"
 	"github.com/antoniomesquita09/impact-lab-34/back/verificacao"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -19,6 +20,7 @@ type App struct {
 	Verificacao *verificacao.Cliente
 	CEP         *geo.CEP
 	Roteador    *geo.Roteador
+	Email       *notifica.Enviador
 	AnoLetivo   int
 }
 
@@ -47,6 +49,7 @@ func (a *App) Rotas() http.Handler {
 	mux.HandleFunc("POST /api/inscricao/referencia", a.autenticado(a.referencia))
 	mux.HandleFunc("GET /api/inscricao/recomendacoes", a.autenticado(a.recomendacoes))
 	mux.HandleFunc("POST /api/inscricao/opcoes", a.autenticado(a.opcoes))
+	mux.HandleFunc("GET /api/inscricao/comprovante", a.autenticado(a.comprovante))
 	mux.HandleFunc("GET /api/inscricao/rota", a.autenticado(a.rota))
 	mux.HandleFunc("GET /api/inscricao", a.autenticado(a.estado))
 

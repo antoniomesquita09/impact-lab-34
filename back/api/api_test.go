@@ -7,11 +7,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/antoniomesquita09/impact-lab-34/back/db"
 	"github.com/antoniomesquita09/impact-lab-34/back/geo"
 	"github.com/antoniomesquita09/impact-lab-34/back/modelo"
+	"github.com/antoniomesquita09/impact-lab-34/back/notifica"
 	"github.com/antoniomesquita09/impact-lab-34/back/verificacao"
 )
 
@@ -33,7 +35,7 @@ func appDeTeste(t *testing.T) (*App, func()) {
 	pool.Exec(ctx, `DELETE FROM contas WHERE cpf=$1`, cpfTeste)
 	return &App{Pool: pool, Ref: ref,
 			Verificacao: verificacao.NovoCliente("", "", "../mocks/criterios.json"),
-			CEP:         geo.NovoCEP(), Roteador: geo.NovoRoteador(), AnoLetivo: 2026},
+			CEP:         geo.NovoCEP(), Roteador: geo.NovoRoteador(), Email: notifica.NovoDoAmbiente(), AnoLetivo: 2026},
 		func() { pool.Exec(ctx, `DELETE FROM contas WHERE cpf=$1`, cpfTeste); pool.Close() }
 }
 
@@ -278,5 +280,68 @@ func TestPrepararReabreComAsRespostasDaFamilia(t *testing.T) {
 	}
 	if !achou {
 		t.Fatal("pergunta 20 não veio no preparar")
+	}
+}
+
+// TestComprovanteDepoisDasOpcoes: o comprovante só existe depois que a família
+// escolhe as creches, e traz as opções na ordem de preferência dela.
+func TestComprovanteDepoisDasOpcoes(t *testing.T) {
+	app, limpar := appDeTeste(t)
+	defer limpar()
+	h := app.Rotas()
+	_, reg := post(t, h, "/api/auth/registrar", "", map[string]string{
+		"cpf": cpfTeste, "nome": "Teste", "nascimento": "1990-01-01",
+		"senha": "x", "email": "familia@exemplo.org"})
+	tok := reg["token"].(string)
+
+	// antes de escolher creche, não há comprovante
+	if w, _ := get(t, h, "/api/inscricao/comprovante", tok); w.Code != 400 {
+		t.Fatalf("sem opções deveria dar 400, deu %d", w.Code)
+	}
+
+	get(t, h, "/api/inscricao/preparar", tok)
+	post(t, h, "/api/inscricao/respostas", tok, map[string]any{
+		"respostas": map[string]bool{}, "nascimento_crianca": "2025-06-10", "horario": "Integral"})
+	post(t, h, "/api/inscricao/referencia", tok, map[string]any{
+		"lat": -22.9068, "lon": -43.1729, "texto": "Centro"})
+
+	var codigos []string
+	rows, err := app.Pool.Query(context.Background(), `SELECT cod FROM unidades LIMIT 2`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rows.Next() {
+		var c string
+		rows.Scan(&c)
+		codigos = append(codigos, c)
+	}
+	rows.Close()
+
+	if w, _ := post(t, h, "/api/inscricao/opcoes", tok, map[string]any{"unidades": codigos}); w.Code != 200 {
+		t.Fatalf("opcoes = %d", w.Code)
+	}
+
+	w, out := get(t, h, "/api/inscricao/comprovante", tok)
+	if w.Code != 200 {
+		t.Fatalf("comprovante = %d: %s", w.Code, w.Body)
+	}
+	txt, _ := out["texto"].(string)
+	if !strings.Contains(txt, "1ª") || !strings.Contains(txt, "2ª") {
+		t.Fatalf("comprovante sem as opções na ordem:\n%s", txt)
+	}
+	if !strings.Contains(txt, "não garante vaga") {
+		t.Fatal("comprovante tem que dizer que não garante vaga")
+	}
+	if strings.Contains(strings.ToLower(txt), "pontua") {
+		t.Fatal("comprovante não pode citar pontuação")
+	}
+	if out["email_destino"] != "familia@exemplo.org" {
+		t.Fatalf("email_destino = %v", out["email_destino"])
+	}
+	if out["modo_log"] != true {
+		t.Fatal("sem SMTP configurado, modo_log tem que ser true — a tela não pode dizer que enviou")
+	}
+	if out["protocolo"] == nil || out["protocolo"] == "" {
+		t.Fatal("sem protocolo")
 	}
 }

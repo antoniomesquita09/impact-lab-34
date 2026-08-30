@@ -10,6 +10,7 @@ import (
 	"github.com/antoniomesquita09/impact-lab-34/back/db"
 	"github.com/antoniomesquita09/impact-lab-34/back/geo"
 	"github.com/antoniomesquita09/impact-lab-34/back/modelo"
+	"github.com/antoniomesquita09/impact-lab-34/back/notifica"
 	"github.com/antoniomesquita09/impact-lab-34/back/verificacao"
 )
 
@@ -32,12 +33,18 @@ func main() {
 		log.Print("verificação de critérios: MOCK (defina VERIFICACAO_BASE_URL e VERIFICACAO_TOKEN para a API real)")
 	}
 
+	email := notifica.NovoDoAmbiente()
+	if email.ModoLog() {
+		log.Print("e-mail: MODO LOG (defina SMTP_HOST e SMTP_FROM para enviar de verdade)")
+	}
+
 	app := &api.App{
 		Pool:        pool,
 		Ref:         ref,
 		Verificacao: verif,
 		CEP:         geo.NovoCEP(),
 		Roteador:    geo.NovoRoteador(),
+		Email:       email,
 		AnoLetivo:   2026,
 	}
 	porta := os.Getenv("PORT")

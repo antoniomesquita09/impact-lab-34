@@ -41,7 +41,7 @@ func (a *App) abrirSessao(r *http.Request, cpf string) (string, error) {
 }
 
 func (a *App) registrar(w http.ResponseWriter, r *http.Request) {
-	var in struct{ CPF, Nome, Nascimento, Senha string }
+	var in struct{ CPF, Nome, Nascimento, Senha, Email string }
 	if err := lerJSON(r, &in); err != nil {
 		erro(w, 400, "Não entendi os dados enviados.")
 		return
@@ -67,8 +67,8 @@ func (a *App) registrar(w http.ResponseWriter, r *http.Request) {
 		nasc = t
 	}
 	if _, err := a.Pool.Exec(r.Context(),
-		`INSERT INTO contas (cpf,nome,nascimento,senha_hash) VALUES ($1,$2,$3,$4)`,
-		cpf, in.Nome, nasc, string(hash)); err != nil {
+		`INSERT INTO contas (cpf,nome,nascimento,email,senha_hash) VALUES ($1,$2,$3,NULLIF($4,''),$5)`,
+		cpf, in.Nome, nasc, strings.TrimSpace(in.Email), string(hash)); err != nil {
 		erro(w, 409, "Já existe conta para este CPF. Entre com a sua senha.")
 		return
 	}

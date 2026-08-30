@@ -266,6 +266,9 @@ func (a *App) opcoes(w http.ResponseWriter, r *http.Request, cpf string) {
 		erro(w, 500, "Não conseguimos salvar suas opções. Tente de novo.")
 		return
 	}
+	// comprovante em segundo plano: a inscrição já está salva e confirmada, e
+	// uma falha de e-mail não pode desfazer isso nem atrasar a resposta
+	go a.enviarComprovante(cpf)
 	escreverJSON(w, 200, map[string]any{"ok": true, "opcoes": in.Unidades})
 }
 

@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS contas (
   cpf        text PRIMARY KEY,
   nome       text NOT NULL,
   nascimento date,
+  email      text,                 -- opcional: sem ele o comprovante fica só na tela
   senha_hash text NOT NULL,
   criado_em  timestamptz NOT NULL DEFAULT now()
 );
