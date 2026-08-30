@@ -72,7 +72,22 @@ export function Medidor({ faixa }) {
   )
 }
 
+/**
+ * Slot de chance. Mesmo lugar e mesma anatomia nos dois casos: a unidade
+ * recomendada mostra a faixa, a que não passou pelo modelo mostra
+ * "não estimada". A honestidade é conteúdo do componente, não um componente
+ * diferente.
+ */
 export function Chance({ faixa }) {
+  if (!faixa) {
+    return (
+      <span className="chance sem">
+        <Medidor faixa="nenhuma" />
+        <b>não estimada</b>
+        <span className="sr">chance não calculada para esta unidade</span>
+      </span>
+    )
+  }
   return (
     <span className="chance">
       <Medidor faixa={faixa} />

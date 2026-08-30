@@ -14,11 +14,13 @@ const camadaTodas = {
   id: 'todas',
   type: 'circle',
   paint: {
-    'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 2, 15, 5],
-    'circle-color': '#7C8CA1',
-    'circle-opacity': 0.65,
-    'circle-stroke-width': 1,
-    'circle-stroke-color': '#E9EDF2',
+    // no zoom inicial, 2px em cinza claro sobre basemap claro simplesmente somem:
+    // a rede inteira estava no mapa e parecia não estar
+    'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 3, 13, 4.5, 16, 6.5],
+    'circle-color': '#5A6B80',
+    'circle-opacity': 0.85,
+    'circle-stroke-width': 1.5,
+    'circle-stroke-color': '#FFFFFF',
   },
 }
 
@@ -246,12 +248,11 @@ export default function Creches() {
           aria-pressed={ativo}
           onClick={() => setCodAberto(u.cod)}
         >
+          {/* mesmo slot nos dois casos: número nas recomendadas, marca neutra nas demais */}
           {posicao ? (
             <span className={`rank ${u.faixa}`}>{posicao}</span>
           ) : (
-            <span className="rank neutro" aria-hidden="true">
-              <Icone nome="predio" tamanho={15} largura={1.9} />
-            </span>
+            <span className="rank neutro" aria-hidden="true"><i /></span>
           )}
           <span>
             <span className="nome">{u.nome}</span>
@@ -262,7 +263,7 @@ export default function Creches() {
               </span>
             )}
           </span>
-          {u.recomendada && <Chance faixa={u.faixa} />}
+          <Chance faixa={u.recomendada ? u.faixa : null} />
         </button>
       </li>
     )
@@ -351,7 +352,7 @@ export default function Creches() {
             </ul>
           ) : (
             <>
-              <ul className="list">
+              <ul className="list recomendadas">
                 <li className="secao destaque">
                   <Icone nome="check" tamanho={12} largura={3.5} />
                   Recomendadas para você
