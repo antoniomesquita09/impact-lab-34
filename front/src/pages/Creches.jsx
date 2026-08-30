@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Map, { Layer, Marker, NavigationControl, Popup, Source } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { api, MAP_STYLE } from '../api'
-import { AvisoDemo, Cabecalho, Carregando, Chance, corDaFaixa, Erro, Icone, Medidor, Passos } from '../componentes'
+import { AvisoDemo, Cabecalho, Carregando, Chance, Erro, Faixa, Icone, Passos } from '../componentes'
 import { deFaixa, km as fmtKm, ROTULO } from '../faixa'
 import { nomeUnidade } from '../texto'
 import { distanciaKm, normalizar } from '../geo'
@@ -223,17 +223,10 @@ export default function Creches() {
         </div>
       </div>
       <dl className="stats">
-        {escolhida.recomendada ? (
-          <div>
-            <dt>Chance</dt>
-            <dd className="comfaixa" style={{ color: corDaFaixa(escolhida.faixa) }}>
-              <Medidor faixa={escolhida.faixa} />
-              {ROTULO[escolhida.faixa]}
-            </dd>
-          </div>
-        ) : (
-          <div><dt>Chance</dt><dd className="sem">não estimada</dd></div>
-        )}
+        <div>
+          <dt>Chance</dt>
+          <dd className="comfaixa"><Faixa faixa={escolhida.recomendada ? escolhida.faixa : null} /></dd>
+        </div>
         <div><dt>Distância</dt><dd>{fmtKm(escolhida.km)}</dd></div>
         <div><dt>Turno</dt><dd>{dados.horario}</dd></div>
       </dl>

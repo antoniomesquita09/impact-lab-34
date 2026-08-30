@@ -257,23 +257,20 @@ input, select { font: inherit; color: inherit; }
 }
 .vazio { font-size: 13px; color: var(--ink-3); padding: 16px 12px; }
 
-.chance { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-.chance b { font-family: var(--display); font-size: 13.5px; font-weight: 700; line-height: 1; }
-.chance b.alta { color: var(--accent); }
-.chance b.media { color: var(--amber); }
-.chance b.baixa { color: var(--alert); }
-.chance.sem b { color: var(--ink-3); font-weight: 600; font-size: 11.5px; }
+.chance { display: flex; align-items: center; }
 
-/* medidor de três degraus: ordena a faixa sem inventar precisão */
-.meter { display: inline-flex; align-items: flex-end; gap: 2.5px; height: 13px; }
-.meter i { width: 4px; border-radius: 1.5px; background: var(--line); display: block; }
-.meter i:nth-child(1) { height: 6px; }
-.meter i:nth-child(2) { height: 9.5px; }
-.meter i:nth-child(3) { height: 13px; }
-.meter.baixa i:nth-child(1) { background: var(--alert); }
-.meter.media i:nth-child(-n+2) { background: var(--amber); }
-.meter.alta i { background: var(--accent); }
-.meter.nenhuma i { background: var(--line); }
+/* Faixa como pastilha. O texto carrega a informação — não depende de cor — e
+   não sugere medição graduada, que é o que barras crescentes sugeriam. */
+.faixa-pill {
+  display: inline-flex; align-items: center; white-space: nowrap;
+  font-family: var(--display); font-size: 11.5px; font-weight: 700;
+  letter-spacing: .01em; padding: 4px 10px; border-radius: 999px;
+  border: 1px solid transparent;
+}
+.faixa-pill.alta { background: var(--accent-soft); color: var(--accent-ink); border-color: #BFDCDC; }
+.faixa-pill.media { background: var(--amber-soft); color: #7E520F; border-color: var(--amber-line); }
+.faixa-pill.baixa { background: var(--alert-soft); color: #7E2A22; border-color: #E8C9C4; }
+.faixa-pill.sem { background: var(--sunken); color: var(--ink-3); border-color: var(--line); font-weight: 600; }
 
 /* ---------- barra de confirmação ---------- */
 .confirm {
@@ -351,7 +348,7 @@ input, select { font: inherit; color: inherit; }
 .stats > div + div { border-left: 1px solid var(--line-2); }
 .stats dt { font-family: var(--display); font-size: 9.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
 .stats dd { margin: 0; font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.stats dd.comfaixa { display: flex; align-items: center; gap: 6px; }
+.stats dd.comfaixa { display: flex; align-items: center; }
 .porque { font-size: 12.5px; color: var(--ink-2); line-height: 1.5; }
 .porque b { color: var(--ink); font-weight: 600; }
 .popup .acao {
@@ -499,15 +496,8 @@ input, select { font: inherit; color: inherit; }
 .opcao .meta { font-size: 11.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 /* a faixa é a da creche (igual à lista da esquerda); o efeito da posição vem
    ao lado, como número, sem competir com ela */
-.opcao .linha-chance { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11.5px; margin-top: 4px; }
-.opcao .linha-chance > b { font-family: var(--display); font-weight: 700; font-size: 12px; }
-.opcao .linha-chance b.alta { color: var(--accent); }
-.opcao .linha-chance b.media { color: var(--amber); }
-.opcao .linha-chance b.baixa { color: var(--alert); }
-.opcao .linha-chance .pos {
-  color: var(--ink-3); padding-left: 6px; border-left: 1px solid var(--line);
-  font-variant-numeric: tabular-nums;
-}
+.opcao .linha-chance { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: 11.5px; margin-top: 5px; }
+.opcao .linha-chance .pos { color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .opcao .linha-chance .pos b { color: var(--ink-2); font-weight: 600; }
 
 .opcao .acoes { display: flex; flex-direction: column; gap: 3px; }
@@ -626,7 +616,7 @@ input, select { font: inherit; color: inherit; }
 }
 .mais:hover { background: var(--sunken); border-color: #C6D0DC; color: var(--ink); }
 
-.stats dd.sem { font-size: 13px; font-weight: 600; color: var(--ink-3); letter-spacing: 0; }
+
 
 /* ---------- centragem vertical nas telas curtas ----------
    `margin-block: auto` em vez de `align-items: center`: quando o conteúdo passa

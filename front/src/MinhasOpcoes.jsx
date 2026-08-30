@@ -1,6 +1,6 @@
 import { Fragment, useState } from 'react'
-import { Icone, Medidor } from './componentes'
-import { km as fmtKm, ROTULO } from './faixa'
+import { Faixa, Icone } from './componentes'
+import { km as fmtKm } from './faixa'
 
 /**
  * Sidebar das creches escolhidas, na ordem de preferência.
@@ -76,12 +76,7 @@ export default function MinhasOpcoes({ itens, aoMover, aoRemover, pctNaPosicao }
                 <span className="nome">{c.nome}</span>
                 <span className="meta">{c.bairro} · {fmtKm(c.km)}</span>
                 <span className="linha-chance">
-                  {c.faixa && (
-                    <>
-                      <Medidor faixa={c.faixa} />
-                      <b className={c.faixa}>{ROTULO[c.faixa]}</b>
-                    </>
-                  )}
+                  <Faixa faixa={c.faixa} />
                   {pct != null && (
                     <span className="pos">{i + 1}ª opção · <b>{pct}%</b> nesta posição</span>
                   )}

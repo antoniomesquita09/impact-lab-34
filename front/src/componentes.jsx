@@ -66,10 +66,17 @@ export function AvisoDemo() {
   )
 }
 
-export function Medidor({ faixa }) {
-  return (
-    <span className={`meter ${faixa}`} aria-hidden="true"><i /><i /><i /></span>
-  )
+/**
+ * Faixa de chance como pastilha.
+ *
+ * Substituiu um medidor de três barras: barras crescentes sugerem medição
+ * graduada, e o que temos é uma faixa. A pastilha carrega a informação no
+ * texto — não depende de cor — e cabe igual na lista longa, no cartão de
+ * detalhe e na sidebar.
+ */
+export function Faixa({ faixa }) {
+  if (!faixa) return <span className="faixa-pill sem">sem estimativa</span>
+  return <span className={`faixa-pill ${faixa}`}>{ROTULO[faixa]}</span>
 }
 
 /**
@@ -79,20 +86,12 @@ export function Medidor({ faixa }) {
  * diferente.
  */
 export function Chance({ faixa }) {
-  if (!faixa) {
-    return (
-      <span className="chance sem">
-        <Medidor faixa="nenhuma" />
-        <b>não estimada</b>
-        <span className="sr">chance não calculada para esta unidade</span>
-      </span>
-    )
-  }
   return (
     <span className="chance">
-      <Medidor faixa={faixa} />
-      <b className={faixa}>{ROTULO[faixa]}</b>
-      <span className="sr">chance de a matrícula dar certo</span>
+      <Faixa faixa={faixa} />
+      <span className="sr">
+        {faixa ? 'chance de a matrícula dar certo' : 'chance não calculada para esta unidade'}
+      </span>
     </span>
   )
 }
