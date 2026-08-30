@@ -6,7 +6,8 @@
 
 - **Aplicação:** **https://impact-lab-34.onrender.com** — entre com o CPF de demonstração
   `100.000.000-19` e a senha `segredo123`.
-- **Vídeo demo (60s):** dispensado — a aplicação está publicamente acessível no link acima.
+- **Vídeo da demonstração:** [`docs/demo.mp4`](docs/demo.mp4) (4 min, o fluxo completo). O vídeo
+  de 60s é dispensado pela regra do evento, já que a aplicação está publicamente acessível acima.
 
 ## A solução
 
