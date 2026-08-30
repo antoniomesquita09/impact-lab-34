@@ -40,7 +40,7 @@ func ReguaPadrao() []Pergunta {
 
 // Gravar substitui todos os dados de referência numa única transação: ou o banco
 // fica com o resultado completo desta rodada, ou intacto. Idempotente.
-func Gravar(ctx context.Context, pool *pgxpool.Pool, uns []Unidade, m Modelo, perguntas []Pergunta) error {
+func Gravar(ctx context.Context, pool *pgxpool.Pool, uns []Unidade, m Modelo, perguntas []Pergunta, capacidade []LinhaCapacidade) error {
 	if len(uns) == 0 {
 		return fmt.Errorf("nenhuma unidade para gravar — recusando apagar o que está no banco")
 	}
@@ -54,9 +54,10 @@ func Gravar(ctx context.Context, pool *pgxpool.Pool, uns []Unidade, m Modelo, pe
 	}
 	defer tx.Rollback(ctx)
 
-	// unidade_oferta some junto pelo CASCADE, mas TRUNCATE explícito deixa a ordem clara.
+	// As filhas somem junto pelo CASCADE, mas truncar explícito antes deixa a ordem
+	// clara e não depende da FK.
 	for _, q := range []string{
-		"TRUNCATE unidade_oferta", "TRUNCATE unidades CASCADE",
+		"TRUNCATE unidade_oferta", "TRUNCATE unidade_capacidade", "TRUNCATE unidades CASCADE",
 		"TRUNCATE perguntas", "TRUNCATE modelo_prob", "TRUNCATE modelo_meta",
 	} {
 		if _, err := tx.Exec(ctx, q); err != nil {
@@ -92,6 +93,21 @@ func Gravar(ctx context.Context, pool *pgxpool.Pool, uns []Unidade, m Modelo, pe
 	if _, err := tx.CopyFrom(ctx, pgx.Identifier{"unidade_oferta"},
 		[]string{"cod", "grupamento", "horario"}, pgx.CopyFromRows(rowsO)); err != nil {
 		return fmt.Errorf("copy oferta: %w", err)
+	}
+
+	// unidade_capacidade referencia unidades(cod): só depois das unidades inseridas.
+	rowsC := make([][]any, 0, len(capacidade))
+	for _, c := range capacidade {
+		rowsC = append(rowsC, []any{c.Cod, c.Grupamento, c.Turno, c.Capacidade,
+			c.Matriculados, c.Ociosas, c.TurnoInferido, c.Fonte, c.Referencia})
+	}
+	if len(rowsC) > 0 {
+		if _, err := tx.CopyFrom(ctx, pgx.Identifier{"unidade_capacidade"},
+			[]string{"cod", "grupamento", "turno", "capacidade", "matriculados",
+				"ociosas", "turno_inferido", "fonte", "referencia"},
+			pgx.CopyFromRows(rowsC)); err != nil {
+			return fmt.Errorf("copy capacidade: %w", err)
+		}
 	}
 
 	rowsQ := make([][]any, 0, len(perguntas))
