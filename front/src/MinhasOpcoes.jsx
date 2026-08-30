@@ -17,7 +17,7 @@ import { km as fmtKm } from './faixa'
  * ordem ("2ª opção · 37% nesta posição"). Um número não compete com a faixa;
  * outro rótulo qualitativo competiria.
  */
-export default function MinhasOpcoes({ itens, aoMover, aoRemover, pctNaPosicao }) {
+export default function MinhasOpcoes({ itens, aoMover, aoRemover, pctNaPosicao, motivoSemChance }) {
   const [arrastando, setArrastando] = useState(null)
   // `slot` é o ESPAÇO entre cards onde o card cai (0 = antes do primeiro,
   // itens.length = depois do último). Soltar em cima de um card não troca
@@ -76,7 +76,7 @@ export default function MinhasOpcoes({ itens, aoMover, aoRemover, pctNaPosicao }
                 <span className="nome">{c.nome}</span>
                 <span className="meta">{c.bairro} · {fmtKm(c.km)}</span>
                 <span className="linha-chance">
-                  <Faixa faixa={c.faixa} />
+                  <Faixa faixa={c.faixa} motivo={motivoSemChance?.(c)} />
                   {pct != null && (
                     <span className="pos">{i + 1}ª opção · <b>{pct}%</b> nesta posição</span>
                   )}

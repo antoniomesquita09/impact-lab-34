@@ -208,8 +208,11 @@ export default function Creches() {
   // A chance na posição escolhida, como NÚMERO. A faixa da creche não muda com
   // a ordem — ela é a mesma da lista da esquerda; o que a ordem muda é este
   // percentual, que aparece ao lado dela sem contradizê-la.
+  // Sem faixa não há percentual: se a unidade não oferece o turno ou não tem
+  // histórico, mostrar "39% nesta posição" seria a mesma mentira pela porta dos
+  // fundos — número de chance para uma turma que não existe ali.
   const pctNaPosicao = dados.recomendadas.some((r) => Array.isArray(r.p_por_posicao))
-    ? (c, i) => c.p_por_posicao?.[Math.min(i, 4)] ?? null
+    ? (c, i) => (c.faixa == null ? null : c.p_por_posicao?.[Math.min(i, 4)] ?? null)
     : null
 
   async function concluir() {
@@ -518,6 +521,7 @@ export default function Creches() {
           aoMover={mover}
           aoRemover={remover}
           pctNaPosicao={pctNaPosicao}
+          motivoSemChance={rotuloSemChance}
         />
       </div>
     </div>
