@@ -38,6 +38,23 @@ CREATE TABLE IF NOT EXISTS modelo_prob (
 
 CREATE TABLE IF NOT EXISTS modelo_meta (chave text PRIMARY KEY, valor text NOT NULL);
 
+-- Capacidade e vaga ociosa por unidade × grupamento × turno (Task 3B).
+-- Só existe linha onde há fonte: unidade sem dado fica de fora, nunca com zero —
+-- a tela não pode dizer "0 vagas ociosas" quando o que houve foi ausência de fonte.
+-- referencia carrega a data da fonte, que viaja junto com o número até a interface.
+CREATE TABLE IF NOT EXISTS unidade_capacidade (
+  cod            text NOT NULL REFERENCES unidades(cod) ON DELETE CASCADE,
+  grupamento     text NOT NULL,
+  turno          text NOT NULL,          -- 'Integral' | 'Parcial'
+  capacidade     int  NOT NULL,
+  matriculados   int  NOT NULL,
+  ociosas        int  NOT NULL,          -- greatest(capacidade - matriculados, 0)
+  turno_inferido boolean NOT NULL,       -- false = unidade de turno único (certo)
+  fonte          text NOT NULL,          -- 'publica' | 'parceira'
+  referencia     text NOT NULL,          -- '2025-07-11' | '2025-05'
+  PRIMARY KEY (cod, grupamento, turno)
+);
+
 -- ---------- runtime ----------
 CREATE TABLE IF NOT EXISTS contas (
   cpf        text PRIMARY KEY,
