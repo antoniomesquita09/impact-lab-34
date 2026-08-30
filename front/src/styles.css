@@ -872,3 +872,13 @@ input, select { font: inherit; color: inherit; }
 .rotulo-mapa .maplibregl-popup-content span { font-size: 11px; color: rgba(255, 255, 255, .65); }
 .rotulo-mapa .maplibregl-popup-tip { border-top-color: var(--ink) !important; }
 .rotulo-mapa { pointer-events: none; }
+
+/* ---------- Entrar: sem barra de passos e sem cabeçalho no desktop ----------
+   A barra de passos não orienta ninguém antes de o fluxo começar, e o ⓘ ficava
+   órfão no canto. Removidos com display:none (não sobra caixa ocupando espaço).
+   No celular o cabeçalho fica, porque ali a marca do painel da tese não existe. */
+.pagina.entrada .steps { display: none; }
+
+@media (min-width: 1081px) {
+  .pagina.entrada .rail-head { display: none; }
+}
