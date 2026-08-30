@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Map, { Layer, Marker, NavigationControl, Source } from 'react-map-gl/maplibre'
+import Map, { Layer, Marker, NavigationControl, Popup, Source } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { api, MAP_STYLE } from '../api'
 import { AvisoDemo, Cabecalho, Carregando, Chance, corDaFaixa, Erro, Icone, Medidor, Passos } from '../componentes'
@@ -9,7 +9,10 @@ import { nomeUnidade } from '../texto'
 import { distanciaKm, normalizar } from '../geo'
 import MinhasOpcoes from '../MinhasOpcoes'
 
-// as 872 unidades numa passada de WebGL; só as recomendadas viram Marker
+// as 852 unidades numa passada de WebGL; só as recomendadas viram Marker.
+// São três camadas sobre a mesma fonte: o desenho, o realce (escolhida ou sob o
+// mouse) e um alvo transparente bem maior — 3 px é impossível de acertar no
+// toque e ruim no mouse, então a área de clique cresce sem o desenho crescer.
 const camadaTodas = {
   id: 'todas',
   type: 'circle',
@@ -22,6 +25,24 @@ const camadaTodas = {
     'circle-stroke-width': 1.5,
     'circle-stroke-color': '#FFFFFF',
   },
+}
+
+const camadaDestaque = {
+  id: 'todas-destaque',
+  type: 'circle',
+  paint: {
+    'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 6, 13, 8, 16, 10],
+    'circle-color': '#12626A',
+    'circle-opacity': 0.18,
+    'circle-stroke-width': 2,
+    'circle-stroke-color': '#12626A',
+  },
+}
+
+const camadaAlvo = {
+  id: 'todas-alvo',
+  type: 'circle',
+  paint: { 'circle-radius': 14, 'circle-opacity': 0, 'circle-stroke-width': 0 },
 }
 
 const RAIOS = [3, 5, 10]
@@ -39,6 +60,7 @@ export default function Creches() {
   const [enviando, setEnviando] = useState(false)
   const [view, setView] = useState(null)
   const mapaRef = useRef(null)
+  const [sobre, setSobre] = useState(null) // unidade sob o cursor, para realce e rótulo
   const [celular, setCelular] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches,
   )
@@ -126,7 +148,7 @@ export default function Creches() {
         .filter((u) => !marcadas.has(u.cod))
         .map((u) => ({
           type: 'Feature',
-          properties: { nome: u.nome, bairro: u.bairro },
+          properties: { cod: u.cod, nome: u.nome, bairro: u.bairro },
           geometry: { type: 'Point', coordinates: [u.lon, u.lat] },
         })),
     }
@@ -403,13 +425,38 @@ export default function Creches() {
             onMove={(e) => setView(e.viewState)}
             mapStyle={MAP_STYLE}
             style={{ width: '100%', height: '100%' }}
-            interactiveLayerIds={['todas']}
+            interactiveLayerIds={['todas-alvo']}
+            cursor={sobre ? 'pointer' : 'grab'}
+            onMouseMove={(e) => {
+              const f = e.features?.[0]
+              setSobre(f ? { ...f.properties, lat: e.lngLat.lat, lon: e.lngLat.lng } : null)
+            }}
+            onMouseLeave={() => setSobre(null)}
+            onClick={(e) => {
+              const f = e.features?.[0]
+              if (f?.properties?.cod) setCodAberto(f.properties.cod)
+            }}
           >
             <NavigationControl position="top-right" showCompass={false} />
             {geojson && (
               <Source id="todas-src" type="geojson" data={geojson}>
                 <Layer {...camadaTodas} />
+                <Layer
+                  {...camadaDestaque}
+                  filter={['in', ['get', 'cod'], ['literal', [...sel, sobre?.cod, codAberto].filter(Boolean)]]}
+                />
+                <Layer {...camadaAlvo} />
               </Source>
+            )}
+
+            {sobre && (
+              <Popup
+                longitude={sobre.lon} latitude={sobre.lat} anchor="bottom" offset={14}
+                closeButton={false} closeOnClick={false} className="rotulo-mapa"
+              >
+                <b>{nomeUnidade(sobre.nome)}</b>
+                {sobre.bairro && <span>{sobre.bairro}</span>}
+              </Popup>
             )}
 
             <Marker longitude={dados.referencia.lon} latitude={dados.referencia.lat} anchor="bottom">
