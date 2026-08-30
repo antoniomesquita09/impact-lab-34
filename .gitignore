@@ -4,6 +4,7 @@ dados/
 *.env
 node_modules/
 front/dist/
-server
-prep
+# binários compilados na raiz (a barra evita engolir pipeline/prep/)
+/server
+/prep
 .DS_Store
