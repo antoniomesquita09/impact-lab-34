@@ -136,3 +136,33 @@ func TestPPorPosicaoBateComPPctENaoCresce(t *testing.T) {
 		}
 	}
 }
+
+func TestMontarPontoSemHistoricoNaoEstima(t *testing.T) {
+	p := MontarPonto(ref(), Candidata{Cod: "x", Km: 1.234, TaxaRef: nil, NRef: 0}, true)
+	if p.PPct != nil || p.PPorPosicao != nil {
+		t.Fatalf("sem taxa_ref não pode estimar: %+v", p)
+	}
+	if p.Km != 1.23 {
+		t.Fatalf("km não arredondado: %v", p.Km)
+	}
+	if !p.Oferta {
+		t.Fatal("oferta perdida")
+	}
+}
+
+func TestMontarPontoComHistoricoBateComRanquear(t *testing.T) {
+	c := Candidata{Cod: "x", Km: 0.5, TaxaRef: f(0.34), NRef: 100}
+	p := MontarPonto(ref(), c, false)
+	if p.PPct == nil || p.PPorPosicao == nil {
+		t.Fatal("com taxa_ref tem que estimar")
+	}
+	// o mesmo número que a unidade teria se fosse recomendada
+	s := Ranquear(ref(), []Candidata{c}, 1)[0]
+	if *p.PPct != s.PPct || *p.PPorPosicao != s.PPorPosicao {
+		t.Fatalf("mapa e recomendação divergem: %d/%v vs %d/%v",
+			*p.PPct, *p.PPorPosicao, s.PPct, s.PPorPosicao)
+	}
+	if p.Oferta {
+		t.Fatal("oferta invertida")
+	}
+}

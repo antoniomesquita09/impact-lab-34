@@ -143,3 +143,68 @@ func Buscar(ctx context.Context, pool *pgxpool.Pool, lat, lon float64,
 	}
 	return out, rows.Err()
 }
+
+// PontoMapa é uma unidade da lista completa do mapa. Diferente de Sugestao,
+// aqui a chance é opcional: unidade sem histórico devolve nil, e o front diz
+// "sem histórico para estimar" em vez de exibir um número fabricado.
+type PontoMapa struct {
+	Cod         string  `json:"cod"`
+	Nome        string  `json:"nome"`
+	Bairro      string  `json:"bairro"`
+	Lat         float64 `json:"lat"`
+	Lon         float64 `json:"lon"`
+	Km          float64 `json:"km"`
+	Oferta      bool    `json:"oferta"` // oferta o grupamento e o turno da criança
+	PPct        *int    `json:"p_pct"`
+	PPorPosicao *[5]int `json:"p_por_posicao"`
+}
+
+// MontarPonto estima a chance de uma unidade do mapa. Sem taxa_ref não há
+// estimativa — nil, não zero e não a média da rede.
+func MontarPonto(ref *modelo.Ref, c Candidata, oferta bool) PontoMapa {
+	p := PontoMapa{
+		Cod: c.Cod, Nome: c.Nome, Bairro: c.Bairro, Lat: c.Lat, Lon: c.Lon,
+		Km: math.Round(c.Km*100) / 100, Oferta: oferta,
+	}
+	if c.TaxaRef == nil {
+		return p
+	}
+	pct := int(math.Round(Probabilidade(ref, c.TaxaRef, c.NRef, c.Km, 1) * 100))
+	var pp [5]int
+	for i := 1; i <= 5; i++ {
+		pp[i-1] = int(math.Round(Probabilidade(ref, c.TaxaRef, c.NRef, c.Km, i) * 100))
+	}
+	p.PPct, p.PPorPosicao = &pct, &pp
+	return p
+}
+
+// TodasUnidades traz a rede inteira com distância e chance estimada, marcando
+// quais ofertam o grupamento e o turno pedidos. Não filtra: o mapa mostra tudo,
+// e o front usa `oferta` para dizer que a turma não existe naquela unidade.
+func TodasUnidades(ctx context.Context, pool *pgxpool.Pool, ref *modelo.Ref,
+	lat, lon float64, grupamento, horario string) ([]PontoMapa, error) {
+	const q = `
+		SELECT u.cod, u.nome, coalesce(u.bairro,''),
+		       ST_Y(u.geom::geometry), ST_X(u.geom::geometry),
+		       ST_Distance(u.geom, $1::geography) / 1000.0 AS km,
+		       u.taxa_ref, u.n_ref,
+		       EXISTS (SELECT 1 FROM unidade_oferta o
+		               WHERE o.cod = u.cod AND o.grupamento = $2 AND o.horario = $3) AS oferta
+		FROM unidades u
+		ORDER BY km`
+	rows, err := pool.Query(ctx, q, ponto(lat, lon), grupamento, horario)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []PontoMapa{}
+	for rows.Next() {
+		var c Candidata
+		var oferta bool
+		if err := rows.Scan(&c.Cod, &c.Nome, &c.Bairro, &c.Lat, &c.Lon, &c.Km, &c.TaxaRef, &c.NRef, &oferta); err != nil {
+			return nil, err
+		}
+		out = append(out, MontarPonto(ref, c, oferta))
+	}
+	return out, rows.Err()
+}

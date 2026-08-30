@@ -155,14 +155,6 @@ func (a *App) referencia(w http.ResponseWriter, r *http.Request, cpf string) {
 	escreverJSON(w, 200, map[string]any{"lat": lat, "lon": lon, "texto": texto, "precisao": precisao})
 }
 
-type pontoMapa struct {
-	Cod    string  `json:"cod"`
-	Nome   string  `json:"nome"`
-	Lat    float64 `json:"lat"`
-	Lon    float64 `json:"lon"`
-	Bairro string  `json:"bairro"`
-}
-
 func (a *App) recomendacoes(w http.ResponseWriter, r *http.Request, cpf string) {
 	raio := 5.0
 	if v := r.URL.Query().Get("raio_km"); v != "" {
@@ -196,17 +188,12 @@ func (a *App) recomendacoes(w http.ResponseWriter, r *http.Request, cpf string) 
 	}
 	sug := recomenda.Ranquear(a.Ref, cands, 5)
 
-	rows, err := a.Pool.Query(r.Context(),
-		`SELECT cod,nome,ST_Y(geom::geometry),ST_X(geom::geometry),coalesce(bairro,'') FROM unidades`)
-	todas := []pontoMapa{}
-	if err == nil {
-		for rows.Next() {
-			var p pontoMapa
-			if rows.Scan(&p.Cod, &p.Nome, &p.Lat, &p.Lon, &p.Bairro) == nil {
-				todas = append(todas, p)
-			}
-		}
-		rows.Close()
+	// a rede inteira, com distância e chance estimada — o mapa não filtra, mas
+	// marca `oferta` para o front dizer quando a turma não existe na unidade
+	todas, err := recomenda.TodasUnidades(r.Context(), a.Pool, a.Ref, *lat, *lon, *grupamento, *horario)
+	if err != nil {
+		erro(w, 500, "Não conseguimos carregar as creches do mapa.")
+		return
 	}
 
 	escreverJSON(w, 200, map[string]any{
