@@ -836,9 +836,12 @@ input, select { font: inherit; color: inherit; }
     row-gap: 20px;
     align-content: center;
   }
+  /* sem a moldura, os espaçadores do cabeçalho virariam dois círculos soltos
+     nas pontas da tela; e a barra de passos fica melhor na coluna do texto */
+  .pagina.conclusao .icon-btn.vazio { display: none; }
   .pagina.conclusao .rail > .rail-head,
   .pagina.conclusao .rail > .steps,
-  .pagina.conclusao .rail > .demo-bar { grid-column: 1 / -1; }
+  .pagina.conclusao .rail > .demo-bar { grid-column: 1; }
   .pagina.conclusao .conc-esq { grid-column: 1; align-self: center; }
   .pagina.conclusao .conc-dir {
     grid-column: 2;
