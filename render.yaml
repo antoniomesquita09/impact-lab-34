@@ -5,7 +5,7 @@ services:
   - type: web
     name: impact-lab-34
     runtime: go
-    region: virginia            # mesma região do Supabase (East US)
+    region: ohio                # mesma região do Supabase (us-east-2)
     plan: starter               # free dorme após 15 min → 30-50 s de cold start no pitch. Starter não dorme.
     healthCheckPath: /api/health
     buildCommand: |
