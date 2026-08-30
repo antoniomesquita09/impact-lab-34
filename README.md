@@ -2,10 +2,27 @@
 
 **Equipe 34** · Claude Impact Lab Rio, 2ª edição · 30/08/2026
 
-<!-- TODO: nomes dos 4 membros da equipe -->
+**Membros:** Antonio Mesquita · João Pedro Bonato · Júlio Japiassú · Talita Oliveira
 
-- **Aplicação:** <!-- TODO: URL do Render, quando publicada -->
-- **Vídeo demo (60s):** <!-- TODO: link -->
+- **Aplicação:** **https://impact-lab-34.onrender.com** — entre com o CPF de demonstração
+  `100.000.000-19` e a senha `segredo123`.
+- **Vídeo demo (60s):** dispensado — a aplicação está publicamente acessível no link acima.
+
+## A solução
+
+Um novo fluxo de inscrição onde a família entra com CPF, tem os critérios pré-validados contra as
+bases que a Prefeitura já tem, responde só o que falta, informa um local de referência (a casa, o
+trabalho, a casa da avó) e visualiza **no mapa** as creches ordenadas por proximidade ×
+probabilidade real de conseguir a vaga.
+
+Três mudanças em relação ao processo atual:
+
+1. **A família vê a distância antes de escolher**, não depois de perder a vaga.
+2. **A probabilidade é calibrada em 5 anos de dados reais**, não é um chute — e é mostrada como
+   probabilidade, não como promessa.
+3. **O que a Prefeitura já sabe, ela não pergunta de novo.** Os critérios verificáveis vêm das
+   bases; o formulário fica com o que só a família pode responder. A família escolhe as creches
+   vendo com clareza a chance de a matrícula dar certo.
 
 ---
 
@@ -26,21 +43,6 @@ Medimos o efeito disso nos 837.179 registros de escolha dos processos de 2021 a 
 A proporção de escolhas no próprio bairro cai de 60,1% na 1ª opção para 42,8% na 5ª. A cauda da
 lista é preenchimento: fica longe e morre. **A distância prevê a matrícula, e o formulário não
 pergunta.**
-
-## A solução
-
-Um novo fluxo de inscrição onde a família entra com CPF, tem os critérios pré-validados contra as
-bases que a Prefeitura já tem, responde só o que falta, informa um local de referência (a casa, o
-trabalho, a casa da avó) e recebe **no mapa** as creches ordenadas por proximidade × probabilidade
-real de conseguir a vaga.
-
-Três mudanças em relação ao processo atual:
-
-1. **A família vê a distância antes de escolher**, não depois de perder a vaga.
-2. **A probabilidade é calibrada em 5 anos de dados reais**, não é um chute — e é mostrada como
-   probabilidade, não como promessa.
-3. **O que a Prefeitura já sabe, ela não pergunta de novo.** Os critérios verificáveis vêm das
-   bases; o formulário fica com o que só a família pode responder.
 
 ## Arquitetura
 
@@ -127,7 +129,11 @@ cd front && npm run build && cd ..
 go run ./back                         # sobe em :8080: API + front/dist com fallback SPA
 ```
 
-O front em desenvolvimento: <!-- TODO (sessão do front): comandos de dev -->
+O front em desenvolvimento, com recarga automática e proxy de `/api` para o back na `:8080`:
+
+```bash
+cd front && npm install && npm run dev
+```
 
 ### Variáveis de ambiente
 
@@ -151,18 +157,25 @@ Os dados brutos (clone de [`CIT-SME-RJ/dadoscreche`](https://github.com/CIT-SME-
 
 Honestidade sobre hoje vs. próximos passos, porque a diferença importa:
 
-**Funciona e está testado:**
+**Funciona, está testado e está no ar:**
+- **A aplicação está publicada** em https://impact-lab-34.onrender.com, servindo API e front do
+  mesmo binário, contra um Postgres com PostGIS de verdade.
 - O pipeline inteiro, ponta a ponta, contra as bases reais: lê 837.179 linhas, calibra o modelo e
-  monta 3.046 linhas de capacidade em ~1,2 s. Reproduz os números oficiais da SME.
-- A API e a fórmula de recomendação, com testes.
+  monta 3.046 linhas de capacidade em ~1,2 s. Reproduz os números oficiais da SME. Já rodou
+  gravando no banco de produção, duas vezes seguidas, com o mesmo resultado (é idempotente):
+  852 unidades, 2.138 combinações de oferta, 3.046 linhas de capacidade, régua de 13 perguntas.
+- A API e a fórmula de recomendação, com testes. `go test ./...` passa inteiro, **sem `SKIP`** —
+  os testes de integração sobem contra o banco real e limpam o que criam.
 
 **Ainda não está de pé:**
-- <!-- TODO: atualizar quando o Supabase e o Render existirem -->
-  O banco de produção ainda não foi provisionado, então o pipeline nunca gravou de verdade e a
-  aplicação não está publicada. Enquanto isso não mudar, este README não afirma o contrário.
-- Por consequência, 6 testes de integração da API estão em `SKIP`: eles sobem contra o banco real e
-  limpam o que criam. Três destravam com o schema aplicado; os outros três, depois que o pipeline
-  rodar. Nenhum deles foi desabilitado para "ficar verde".
+- **A verificação de critérios responde do mock** `back/mocks/criterios.json`. Sem
+  `VERIFICACAO_BASE_URL` e `VERIFICACAO_TOKEN`, o servidor loga `verificação de critérios: MOCK`
+  no boot, de propósito, para a demo não passar por real o que não é.
+- **O comprovante de inscrição não é enviado**, é registrado no log. Sem `SMTP_HOST` e `SMTP_FROM`,
+  o boot avisa `e-mail: MODO LOG`. O conteúdo do comprovante é real; o transporte é que falta.
+- **Não há convocação nem fechamento do período de inscrição.** As telas dessas fases existem como
+  demonstração, alcançáveis pelo seletor de modo na tela de entrada, e não por trás delas há
+  endpoint algum — é protótipo de fluxo, não funcionalidade.
 
 ## O que esta versão ainda não faz
 
