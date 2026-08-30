@@ -61,8 +61,18 @@ export default function Creches() {
   const [enviando, setEnviando] = useState(false)
   const [view, setView] = useState(null)
   const mapaRef = useRef(null)
+  const trilhoRef = useRef(null)
   const [sobre, setSobre] = useState(null) // unidade sob o cursor, para realce e rótulo
   const [editando, setEditando] = useState(false)
+
+  // Selecionar pelo mapa: o cartão de detalhe pode estar fora da área visível
+  // do trilho, e a pessoa não tem como saber que precisa rolar. Só rola quando
+  // a origem é o mapa — vindo de um clique na própria lista, saltar ao topo
+  // desorienta e faz perder o lugar onde ela estava lendo.
+  const abrirDoMapa = (cod) => {
+    setCodAberto(cod)
+    requestAnimationFrame(() => trilhoRef.current?.scrollTo({ top: 0, behavior: 'smooth' }))
+  }
   const [celular, setCelular] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches,
   )
@@ -317,7 +327,7 @@ export default function Creches() {
   return (
     <div className="pagina larga">
       <div className={`app duas${escolhidas.length ? ' tres' : ''}`}>
-        <div className="rail">
+        <div className="rail" ref={trilhoRef}>
           <Cabecalho
             voltar="/inscricao/referencia"
             info="A chance combina a distância da sua referência com o histórico de cada unidade."
@@ -468,7 +478,7 @@ export default function Creches() {
             onMouseLeave={() => setSobre(null)}
             onClick={(e) => {
               const f = e.features?.[0]
-              if (f?.properties?.cod) setCodAberto(f.properties.cod)
+              if (f?.properties?.cod) abrirDoMapa(f.properties.cod)
             }}
           >
             <NavigationControl position="top-right" showCompass={false} />
@@ -503,7 +513,7 @@ export default function Creches() {
             {recomendadas.map((r, i) => (
               <Marker
                 key={r.cod} longitude={r.lon} latitude={r.lat} anchor="bottom"
-                onClick={(ev) => { ev.originalEvent.stopPropagation(); setCodAberto(r.cod) }}
+                onClick={(ev) => { ev.originalEvent.stopPropagation(); abrirDoMapa(r.cod) }}
               >
                 <span className={`mk${codAberto === r.cod ? ' on' : ''}`} role="button"
                       aria-label={`${r.nome}, chance ${ROTULO[r.faixa].toLowerCase()}`}>
