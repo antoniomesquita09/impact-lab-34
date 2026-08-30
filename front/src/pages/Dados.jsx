@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { AvisoDemo, Cabecalho, Carregando, Erro, Icone, Passos } from '../componentes'
+import { guardarRespostas } from '../EditarRespostas'
 
 /**
  * Formulário em etapas: uma pergunta por tela.
@@ -128,6 +129,9 @@ export default function Dados() {
         nascimento_crianca: nasc,
         horario,
       })
+      // nenhum endpoint devolve o que a família respondeu; esta é a única cópia,
+      // e é dela que o modal de editar respostas parte
+      guardarRespostas(respostas, nasc, horario)
       navegar('/inscricao/referencia')
     } catch (x) {
       setErro(x.message)
