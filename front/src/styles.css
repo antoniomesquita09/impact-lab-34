@@ -747,3 +747,55 @@ input, select { font: inherit; color: inherit; }
   .escolha { min-height: 116px; padding: 18px 12px; }
   .escolha .ilustra { width: 38px; height: 38px; }
 }
+
+/* ---------- wizard em duas colunas ----------
+   No desktop a tela é a página, não um cartão no meio dela: a coluna de
+   contexto persiste com o progresso e o que a Prefeitura já confirmou, e a
+   pergunta da vez ocupa a coluna maior. */
+.pagina.wizard { display: flex; flex-direction: column; gap: 16px; min-height: 100vh; }
+.pagina.wizard .contexto { display: flex; flex-direction: column; gap: 14px; }
+.pagina.wizard .palco { display: flex; flex-direction: column; gap: 16px; flex: 1; }
+.pagina.wizard .ja-sabe { display: none; }
+
+@media (min-width: 1081px) {
+  .pagina.wizard {
+    display: grid; grid-template-columns: minmax(300px, 27%) 1fr;
+    gap: clamp(20px, 2.4vw, 40px); align-items: start;
+    max-width: 1500px; margin: 0 auto;
+  }
+  .pagina.wizard .contexto {
+    position: sticky; top: clamp(14px, 2.2vw, 36px);
+    background: var(--surface); border: 1px solid rgba(16, 32, 58, .06);
+    border-radius: var(--r-frame); box-shadow: var(--shadow-lg);
+    padding: clamp(16px, 1.4vw, 24px); gap: 16px;
+  }
+  .pagina.wizard .ja-sabe { display: flex; flex-direction: column; gap: 9px; }
+  .ja-sabe h2 { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .validadas.compacta li { padding: 8px 10px; font-size: 12px; line-height: 1.35; gap: 8px; }
+  .validadas.compacta .mk2 { width: 15px; height: 15px; }
+  .validadas.compacta small { font-size: 10.5px; margin-top: 2px; }
+
+  /* o palco é a tela: superfície própria, alta, com a pergunta grande */
+  .pagina.wizard .palco {
+    background: var(--surface); border: 1px solid rgba(16, 32, 58, .06);
+    border-radius: var(--r-frame); box-shadow: var(--shadow-lg);
+    padding: clamp(28px, 3vw, 52px);
+    min-height: calc(100vh - 2 * clamp(14px, 2.2vw, 36px));
+    justify-content: center; gap: 24px;
+  }
+  .pagina.wizard .etapa { gap: 22px; max-width: 62ch; margin-block: auto; width: 100%; }
+  .pagina.wizard .etapa .titulo h1 { font-size: clamp(28px, 2.7vw, 38px); }
+  .pagina.wizard .etapa .lede { font-size: 15px; }
+  .pagina.wizard .escolhas { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; max-width: 560px; }
+  .pagina.wizard .escolha { min-height: 168px; }
+  .pagina.wizard .escolha .ilustra { width: 54px; height: 54px; }
+  .pagina.wizard .passo-acoes { max-width: 62ch; width: 100%; margin-top: 0; }
+  /* a lista da etapa 0 não precisa da largura toda para ser lida */
+  .pagina.wizard .etapa .validadas { max-width: 62ch; }
+}
+
+/* telas muito largas: mais respiro, não mais largura de texto */
+@media (min-width: 1800px) {
+  .pagina.wizard { max-width: 1680px; }
+  .pagina.wizard .palco { padding: 64px; }
+}

@@ -78,13 +78,15 @@ export default function Dados() {
 
   if (!dados) {
     return (
-      <div className="pagina estreita">
-        <div className="app"><div className="rail">
+      <div className="pagina wizard">
+        <aside className="contexto">
           <Cabecalho voltar="/entrar" />
           <Passos atual="dados" />
           <AvisoDemo />
+        </aside>
+        <main className="palco">
           {erro ? <Erro>{erro}</Erro> : <Carregando>Consultando os cadastros da Prefeitura…</Carregando>}
-        </div></div>
+        </main>
       </div>
     )
   }
@@ -262,8 +264,11 @@ export default function Dados() {
   }
 
   return (
-    <div className="pagina estreita">
-      <div className="app"><div className="rail">
+    <div className="pagina wizard">
+      {/* Coluna de contexto: persiste ao longo do wizard. O "a Prefeitura já
+          sabe N coisas por você" é o argumento mais forte da tela e sumia assim
+          que a pessoa entrava nas perguntas. */}
+      <aside className="contexto">
         <Cabecalho voltar={etapa === 0 ? '/entrar' : undefined} info="A unidade pode pedir comprovação do que você declarar." />
         <Passos atual="dados" />
         <AvisoDemo />
@@ -275,6 +280,28 @@ export default function Dados() {
           </div>
         )}
 
+        {etapa > 0 && validadas.length > 0 && (
+          <section className="ja-sabe">
+            <h2>
+              A Prefeitura já confirmou
+              {pontosConfirmados > 0 && <span className="pontos">{pontosConfirmados} pts</span>}
+            </h2>
+            <ul className="validadas compacta">
+              {validadas.map((q) => (
+                <li key={q.id} className={q.valor ? 'sim' : 'nao'}>
+                  <span className="mk2">
+                    {q.valor ? <Icone nome="check" tamanho={9} largura={3.5} /> : <span className="tracinho" />}
+                  </span>
+                  <span>{q.texto}<small>{q.fonte}</small></span>
+                </li>
+              ))}
+            </ul>
+            <p className="ajuda">Você não responde nada disto. Se algo estiver errado, procure o CRAS ou a unidade.</p>
+          </section>
+        )}
+      </aside>
+
+      <main className="palco">
         <div className={`etapa${saindo ? ' saindo' : ''}`} key={etapa}>{conteudo}</div>
 
         <Erro>{erro}</Erro>
@@ -297,7 +324,7 @@ export default function Dados() {
             </button>
           )}
         </div>
-      </div></div>
+      </main>
     </div>
   )
 }
