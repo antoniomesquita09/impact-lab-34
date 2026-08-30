@@ -61,18 +61,9 @@ export default function Creches() {
   const [enviando, setEnviando] = useState(false)
   const [view, setView] = useState(null)
   const mapaRef = useRef(null)
-  const trilhoRef = useRef(null)
   const [sobre, setSobre] = useState(null) // unidade sob o cursor, para realce e rótulo
   const [editando, setEditando] = useState(false)
-
-  // Selecionar pelo mapa: o cartão de detalhe pode estar fora da área visível
-  // do trilho, e a pessoa não tem como saber que precisa rolar. Só rola quando
-  // a origem é o mapa — vindo de um clique na própria lista, saltar ao topo
-  // desorienta e faz perder o lugar onde ela estava lendo.
-  const abrirDoMapa = (cod) => {
-    setCodAberto(cod)
-    requestAnimationFrame(() => trilhoRef.current?.scrollTo({ top: 0, behavior: 'smooth' }))
-  }
+  const [rota, setRota] = useState(null)
   const [celular, setCelular] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches,
   )
@@ -163,6 +154,34 @@ export default function Creches() {
     const t = setTimeout(() => mapaRef.current?.resize(), 320)
     return () => clearTimeout(t)
   }, [nSel])
+
+  // Rota da referência até a creche selecionada, sob demanda no clique.
+  // Vem do OSRM pelo back; pode voltar `rota: null` (serviço fora, sem
+  // caminho), e nesse caso desenhamos a linha reta tracejada e dizemos que é
+  // reta — sem inventar traçado.
+  useEffect(() => {
+    if (!codAberto) { setRota(null); return }
+    let vivo = true
+    api(`/api/inscricao/rota?cod=${encodeURIComponent(codAberto)}`)
+      .then((r) => vivo && setRota(r))
+      .catch(() => vivo && setRota(null))
+    return () => { vivo = false }
+  }, [codAberto])
+
+  const geoRota = useMemo(() => {
+    if (!rota?.de || !rota?.para) return null
+    const linha = rota.rota?.geometria
+    return {
+      real: !!linha,
+      dados: {
+        type: 'Feature',
+        geometry: linha || {
+          type: 'LineString',
+          coordinates: [[rota.de.lon, rota.de.lat], [rota.para.lon, rota.para.lat]],
+        },
+      },
+    }
+  }, [rota])
 
   const geojson = useMemo(() => {
     if (!dados) return null
@@ -262,6 +281,13 @@ export default function Creches() {
         <div><dt>Distância</dt><dd>{fmtKm(escolhida.km)}</dd></div>
         <div><dt>Turno</dt><dd>{dados.horario}</dd></div>
       </dl>
+      {rota?.cod === escolhida.cod && (
+        <p className="via">
+          {rota.rota
+            ? <><b>{rota.rota.km.toFixed(1).replace('.', ',')} km</b> pela via · {rota.rota.minutos} min de carro</>
+            : <>Não conseguimos traçar o caminho agora — a linha no mapa é reta, não o trajeto.</>}
+        </p>
+      )}
       {escolhida.recomendada ? (
         <p className="porque"><b>Por que aparece aqui:</b> {escolhida.motivo}</p>
       ) : escolhida.semChance === 'nao_oferta' ? (
@@ -327,7 +353,7 @@ export default function Creches() {
   return (
     <div className="pagina larga">
       <div className={`app duas${escolhidas.length ? ' tres' : ''}`}>
-        <div className="rail" ref={trilhoRef}>
+        <div className="rail">
           <Cabecalho
             voltar="/inscricao/referencia"
             info="A chance combina a distância da sua referência com o histórico de cada unidade."
@@ -478,7 +504,7 @@ export default function Creches() {
             onMouseLeave={() => setSobre(null)}
             onClick={(e) => {
               const f = e.features?.[0]
-              if (f?.properties?.cod) abrirDoMapa(f.properties.cod)
+              if (f?.properties?.cod) setCodAberto(f.properties.cod)
             }}
           >
             <NavigationControl position="top-right" showCompass={false} />
@@ -490,6 +516,21 @@ export default function Creches() {
                   filter={['in', ['get', 'cod'], ['literal', [...sel, sobre?.cod, codAberto].filter(Boolean)]]}
                 />
                 <Layer {...camadaAlvo} />
+              </Source>
+            )}
+
+            {geoRota && (
+              <Source id="rota-src" type="geojson" data={geoRota.dados}>
+                <Layer id="rota-base" type="line"
+                  layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+                  paint={{ 'line-color': '#FFFFFF', 'line-width': 8, 'line-opacity': 0.9 }} />
+                <Layer id="rota-linha" type="line"
+                  layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+                  paint={{
+                    'line-color': '#12626A',
+                    'line-width': 4,
+                    ...(geoRota.real ? {} : { 'line-dasharray': [1.6, 1.4], 'line-opacity': 0.75 }),
+                  }} />
               </Source>
             )}
 
@@ -513,7 +554,7 @@ export default function Creches() {
             {recomendadas.map((r, i) => (
               <Marker
                 key={r.cod} longitude={r.lon} latitude={r.lat} anchor="bottom"
-                onClick={(ev) => { ev.originalEvent.stopPropagation(); abrirDoMapa(r.cod) }}
+                onClick={(ev) => { ev.originalEvent.stopPropagation(); setCodAberto(r.cod) }}
               >
                 <span className={`mk${codAberto === r.cod ? ' on' : ''}`} role="button"
                       aria-label={`${r.nome}, chance ${ROTULO[r.faixa].toLowerCase()}`}>

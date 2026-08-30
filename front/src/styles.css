@@ -327,7 +327,8 @@ input, select { font: inherit; color: inherit; }
 
 /* ---------- cartão de detalhe ---------- */
 .popup {
-  position: absolute; right: 16px; top: 16px; width: 322px; background: var(--surface);
+  /* afastado da direita para não colidir com os controles de zoom do MapLibre */
+  position: absolute; right: 62px; top: 16px; width: 322px; background: var(--surface);
   border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
   padding: 15px; display: flex; flex-direction: column; gap: 13px;
 }
@@ -868,8 +869,14 @@ input, select { font: inherit; color: inherit; }
   box-shadow: var(--shadow-md); font-family: var(--body); max-width: 240px;
   display: flex; flex-direction: column; gap: 1px;
 }
-.rotulo-mapa .maplibregl-popup-content b { font-family: var(--display); font-size: 12.5px; font-weight: 600; line-height: 1.3; }
-.rotulo-mapa .maplibregl-popup-content span { font-size: 11px; color: rgba(255, 255, 255, .65); }
+/* nome numa linha, lugar na outra — `display:block` em vez de depender do flex,
+   porque o MapLibre embrulha o conteúdo e o empilhamento não se propagava */
+.rotulo-mapa .maplibregl-popup-content b {
+  display: block; font-family: var(--display); font-size: 12.5px; font-weight: 600; line-height: 1.3;
+}
+.rotulo-mapa .maplibregl-popup-content span {
+  display: block; font-size: 11px; color: rgba(255, 255, 255, .65); margin-top: 2px;
+}
 .rotulo-mapa .maplibregl-popup-tip { border-top-color: var(--ink) !important; }
 .rotulo-mapa { pointer-events: none; }
 
@@ -891,3 +898,10 @@ input, select { font: inherit; color: inherit; }
   background: var(--surface);
 }
 .editar-respostas:hover { background: var(--sunken); border-color: #C6D0DC; color: var(--ink); }
+
+/* distância pela via, ao lado da linha reta que alimenta o modelo */
+.popup .via {
+  font-size: 12.5px; color: var(--ink-2); background: var(--sunken);
+  border-radius: var(--r-md); padding: 8px 11px; line-height: 1.4;
+}
+.popup .via b { color: var(--ink); font-family: var(--display); font-weight: 700; }
