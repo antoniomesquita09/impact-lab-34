@@ -154,17 +154,16 @@ type PontoMapa struct {
 	Lat         float64 `json:"lat"`
 	Lon         float64 `json:"lon"`
 	Km          float64 `json:"km"`
-	Oferta      bool    `json:"oferta"` // oferta o grupamento e o turno da criança
 	PPct        *int    `json:"p_pct"`
 	PPorPosicao *[5]int `json:"p_por_posicao"`
 }
 
 // MontarPonto estima a chance de uma unidade do mapa. Sem taxa_ref não há
 // estimativa — nil, não zero e não a média da rede.
-func MontarPonto(ref *modelo.Ref, c Candidata, oferta bool) PontoMapa {
+func MontarPonto(ref *modelo.Ref, c Candidata) PontoMapa {
 	p := PontoMapa{
 		Cod: c.Cod, Nome: c.Nome, Bairro: c.Bairro, Lat: c.Lat, Lon: c.Lon,
-		Km: math.Round(c.Km*100) / 100, Oferta: oferta,
+		Km: math.Round(c.Km*100) / 100,
 	}
 	if c.TaxaRef == nil {
 		return p
@@ -178,19 +177,20 @@ func MontarPonto(ref *modelo.Ref, c Candidata, oferta bool) PontoMapa {
 	return p
 }
 
-// TodasUnidades traz a rede inteira com distância e chance estimada, marcando
-// quais ofertam o grupamento e o turno pedidos. Não filtra: o mapa mostra tudo,
-// e o front usa `oferta` para dizer que a turma não existe naquela unidade.
+// TodasUnidades traz as unidades que ofertam o grupamento e o turno da criança,
+// com distância e chance estimada. Filtra de propósito: uma unidade onde a
+// turma da criança não existe não é uma opção — listá-la só para dizer "não
+// oferece" enche a lista e o mapa de escolhas que a família não pode fazer.
 func TodasUnidades(ctx context.Context, pool *pgxpool.Pool, ref *modelo.Ref,
 	lat, lon float64, grupamento, horario string) ([]PontoMapa, error) {
 	const q = `
 		SELECT u.cod, u.nome, coalesce(u.bairro,''),
 		       ST_Y(u.geom::geometry), ST_X(u.geom::geometry),
 		       ST_Distance(u.geom, $1::geography) / 1000.0 AS km,
-		       u.taxa_ref, u.n_ref,
-		       EXISTS (SELECT 1 FROM unidade_oferta o
-		               WHERE o.cod = u.cod AND o.grupamento = $2 AND o.horario = $3) AS oferta
+		       u.taxa_ref, u.n_ref
 		FROM unidades u
+		WHERE EXISTS (SELECT 1 FROM unidade_oferta o
+		              WHERE o.cod = u.cod AND o.grupamento = $2 AND o.horario = $3)
 		ORDER BY km`
 	rows, err := pool.Query(ctx, q, ponto(lat, lon), grupamento, horario)
 	if err != nil {
@@ -200,11 +200,10 @@ func TodasUnidades(ctx context.Context, pool *pgxpool.Pool, ref *modelo.Ref,
 	out := []PontoMapa{}
 	for rows.Next() {
 		var c Candidata
-		var oferta bool
-		if err := rows.Scan(&c.Cod, &c.Nome, &c.Bairro, &c.Lat, &c.Lon, &c.Km, &c.TaxaRef, &c.NRef, &oferta); err != nil {
+		if err := rows.Scan(&c.Cod, &c.Nome, &c.Bairro, &c.Lat, &c.Lon, &c.Km, &c.TaxaRef, &c.NRef); err != nil {
 			return nil, err
 		}
-		out = append(out, MontarPonto(ref, c, oferta))
+		out = append(out, MontarPonto(ref, c))
 	}
 	return out, rows.Err()
 }

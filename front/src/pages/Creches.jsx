@@ -151,12 +151,11 @@ export default function Creches() {
         // segurança se o campo faltar, para a tela não ficar sem distância
         km: typeof u.km === 'number' ? u.km : distanciaKm(lat, lon, u.lat, u.lon),
         recomendada: false,
-        // Só há chance quando a unidade oferece o grupamento e o turno da
-        // criança. O servidor calcula p_pct mesmo para quem não oferece, e
-        // mostrar "65%" para uma turma que não existe ali seria a pior mentira
-        // possível: número alto e bonito para uma vaga inexistente.
-        faixa: u.oferta && u.p_pct != null ? deFaixa(u) : null,
-        semChance: !u.oferta ? 'nao_oferta' : u.p_pct == null ? 'sem_historico' : null,
+        // O servidor já devolve só quem oferece o grupamento e o turno da
+        // criança. Falta a chance quando a unidade não tem histórico bastante
+        // nos processos de 2021 a 2025 — aí a faixa fica vazia, sem inventar.
+        faixa: u.p_pct != null ? deFaixa(u) : null,
+        semChance: u.p_pct == null ? 'sem_historico' : null,
       }))
       .sort((a, b) => a.km - b.km)
   }, [dados])
@@ -323,9 +322,7 @@ export default function Creches() {
     )
   }
 
-  const turno = `${dados.grupamento} ${dados.horario.toLowerCase()}`
-  const rotuloSemChance = (u) =>
-    u.semChance === 'nao_oferta' ? 'não oferece' : u.semChance === 'sem_historico' ? 'sem histórico' : undefined
+  const rotuloSemChance = (u) => (u.semChance === 'sem_historico' ? 'sem histórico' : undefined)
 
   const alternar = (cod) =>
     setSel((atual) =>
@@ -353,9 +350,8 @@ export default function Creches() {
   // A chance na posição escolhida, como NÚMERO. A faixa da creche não muda com
   // a ordem — ela é a mesma da lista da esquerda; o que a ordem muda é este
   // percentual, que aparece ao lado dela sem contradizê-la.
-  // Sem faixa não há percentual: se a unidade não oferece o turno ou não tem
-  // histórico, mostrar "39% nesta posição" seria a mesma mentira pela porta dos
-  // fundos — número de chance para uma turma que não existe ali.
+  // Sem faixa não há percentual: para uma unidade sem histórico bastante,
+  // mostrar "39% nesta posição" seria inventar precisão que o dado não tem.
   const pctNaPosicao = dados.recomendadas.some((r) => Array.isArray(r.p_por_posicao))
     ? (c, i) => (c.faixa == null ? null : c.p_por_posicao?.[Math.min(i, 4)] ?? null)
     : null
@@ -412,11 +408,6 @@ export default function Creches() {
       )}
       {escolhida.recomendada ? (
         <p className="porque"><b>Por que aparece aqui:</b> {escolhida.motivo}</p>
-      ) : escolhida.semChance === 'nao_oferta' ? (
-        <p className="porque">
-          Esta unidade <b>não oferece {turno}</b> — por isso não estimamos chance para ela.
-          Você ainda pode escolhê-la, mas a turma da sua criança não existe ali hoje.
-        </p>
       ) : escolhida.semChance === 'sem_historico' ? (
         <p className="porque">
           Esta unidade <b>não tem histórico suficiente</b> nos processos de 2021 a 2025, então não
