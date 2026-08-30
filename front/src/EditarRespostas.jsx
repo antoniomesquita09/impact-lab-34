@@ -11,8 +11,8 @@ import { Carregando, Erro, Icone } from './componentes'
  *    com o carimbo de proveniência, e com a explicação de que só o CRAS ou a
  *    unidade corrige. O back reforça isso: em `POST /api/inscricao/respostas` as
  *    prevalidadas sobrescrevem o que a família mandar.
- * 2. O score é do servidor. O modal manda o conjunto completo de respostas numa
- *    única requisição e mostra o `score` que voltar — nada é somado no cliente.
+ * 2. O modal manda o conjunto completo de respostas numa única requisição e
+ *    confia na resposta do servidor — nada é calculado no cliente.
  *
  * De onde vêm as respostas atuais: nenhum endpoint devolve o que a família já
  * respondeu (o `/preparar` só devolve a régua e o que foi verificado, e o
@@ -96,10 +96,8 @@ const CSS = `
   border-top: 1px solid #EBEEF3; padding: 12px 18px; display: flex; align-items: center;
   gap: 10px; flex-wrap: wrap;
 }
-.er-score { font-size: 12.5px; color: #6A7789; margin: 0; }
-.er-score b { font-size: 15px; color: #1B2637; font-variant-numeric: tabular-nums; }
-.er-ganho { color: #145446; font-weight: 700; }
-.er-perda { color: #9A3B2E; font-weight: 700; }
+.er-status { font-size: 12.5px; color: #6A7789; margin: 0; }
+.er-ok { color: #145446; font-weight: 700; }
 .er-bts { margin-left: auto; display: flex; gap: 8px; }
 .er-bt {
   font: inherit; font-size: 13.5px; font-weight: 600; border-radius: 999px; padding: 9px 18px;
@@ -148,8 +146,7 @@ export default function EditarRespostas({ aberto, aoFechar, aoSalvar }) {
   const [abertaId, setAbertaId] = useState(null)
   const [nasc, setNasc] = useState('')
   const [horario, setHorario] = useState('')
-  const [scoreAntes, setScoreAntes] = useState(null)
-  const [scoreDepois, setScoreDepois] = useState(null)
+  const [salvo, setSalvo] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [semMudanca, setSemMudanca] = useState(false)
 
@@ -171,7 +168,7 @@ export default function EditarRespostas({ aberto, aoFechar, aoSalvar }) {
     setErro('')
     setErroCarga('')
     setSemMudanca(false)
-    setScoreDepois(null)
+    setSalvo(false)
     setAbertaId(null)
     setDados(null)
 
@@ -190,7 +187,6 @@ export default function EditarRespostas({ aberto, aoFechar, aoSalvar }) {
     api('/api/inscricao')
       .then((e) => {
         if (!vivo) return
-        setScoreAntes(typeof e.score === 'number' ? e.score : null)
         // o turno salvo é mais confiável do que o do localStorage
         if (e.horario) setHorario(e.horario)
       })
@@ -246,7 +242,7 @@ export default function EditarRespostas({ aberto, aoFechar, aoSalvar }) {
 
   function responder(id, valor) {
     setSemMudanca(false)
-    setScoreDepois(null)
+    setSalvo(false)
     setResp((r) => ({ ...r, [String(id)]: valor }))
   }
 
@@ -272,7 +268,7 @@ export default function EditarRespostas({ aberto, aoFechar, aoSalvar }) {
       })
       guardarRespostas(respostas, nasc, horario)
       setInicial(respostas)
-      setScoreDepois(typeof r.score === 'number' ? r.score : null)
+      setSalvo(true)
       if (aoSalvar) aoSalvar(r)
     } catch (x) {
       setErro(
@@ -285,8 +281,6 @@ export default function EditarRespostas({ aberto, aoFechar, aoSalvar }) {
     }
   }
 
-  const delta = scoreDepois !== null && scoreAntes !== null ? scoreDepois - scoreAntes : null
-
   return (
     <div
       className="er-fundo"
@@ -298,7 +292,7 @@ export default function EditarRespostas({ aberto, aoFechar, aoSalvar }) {
         <div className="er-topo">
           <div>
             <h2 id="er-titulo">Editar respostas</h2>
-            <p>Mude o que você declarou. A pontuação é recalculada pela Prefeitura ao salvar.</p>
+            <p>Mude o que você declarou. A Prefeitura reavalia sua inscrição ao salvar.</p>
           </div>
           <button type="button" className="er-x" aria-label="Fechar" onClick={aoFechar}>
             <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1 }}>×</span>
@@ -426,28 +420,18 @@ export default function EditarRespostas({ aberto, aoFechar, aoSalvar }) {
               {semMudanca && !erro && <p className="er-nota">Nada mudou — não havia o que salvar.</p>}
             </div>
           )}
-          <p className="er-score">
-            {scoreDepois !== null ? (
-              <>
-                Pontuação: <b>{scoreAntes ?? '—'}</b> → <b>{scoreDepois}</b>{' '}
-                {delta !== null && delta !== 0 && (
-                  <span className={delta > 0 ? 'er-ganho' : 'er-perda'}>
-                    {delta > 0 ? `você ganhou ${delta} ` : `você perdeu ${-delta} `}
-                    {Math.abs(delta) === 1 ? 'ponto' : 'pontos'}
-                  </span>
-                )}
-                {delta === 0 && <span>a pontuação não mudou</span>}
-              </>
-            ) : (
-              <>
-                Pontuação hoje: <b>{scoreAntes ?? '—'}</b>
-                {mudadas.length > 0 && ` · ${mudadas.length} ${mudadas.length === 1 ? 'resposta alterada' : 'respostas alteradas'}`}
-              </>
-            )}
-          </p>
+          {(salvo || mudadas.length > 0) && (
+            <p className="er-status">
+              {salvo ? (
+                <span className="er-ok">Respostas atualizadas.</span>
+              ) : (
+                `${mudadas.length} ${mudadas.length === 1 ? 'resposta alterada' : 'respostas alteradas'}`
+              )}
+            </p>
+          )}
           <div className="er-bts">
             <button type="button" className="er-bt" onClick={aoFechar}>
-              {scoreDepois !== null ? 'Fechar' : 'Cancelar'}
+              {salvo ? 'Fechar' : 'Cancelar'}
             </button>
             <button
               type="button" className="er-bt forte"

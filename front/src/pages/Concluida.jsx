@@ -68,7 +68,6 @@ export default function Concluida() {
               </ol>
             )}
             <dl className="stats">
-              <div><dt>Pontuação</dt><dd>{estado.score ?? '—'}</dd></div>
               <div><dt>Grupamento</dt><dd>{estado.grupamento || '—'}</dd></div>
               <div><dt>Turno</dt><dd>{estado.horario || '—'}</dd></div>
             </dl>

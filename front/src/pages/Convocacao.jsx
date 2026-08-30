@@ -124,7 +124,7 @@ export default function Convocacao() {
             <p className="lede">
               {sub === 'convocada'
                 ? 'A unidade abaixo tem vaga para a sua criança. Responda por aqui, e a unidade também vai tentar falar com você.'
-                : 'As inscrições foram fechadas e a fila está sendo processada. Sua inscrição continua válida, na ordem de pontuação.'}
+                : 'As inscrições foram fechadas e a fila está sendo processada. Sua inscrição continua válida e mantém seu lugar na fila.'}
             </p>
           </div>
 
@@ -186,7 +186,7 @@ export default function Convocacao() {
                 <>
                   <p className="cv-tit">O que acontece a seguir</p>
                   <ol className="cv-passos">
-                    <li>A fila é ordenada pela pontuação de cada inscrição.</li>
+                    <li>A fila é ordenada pelos critérios de prioridade declarados em cada inscrição.</li>
                     <li>Quando surge vaga numa das creches que você escolheu, a unidade entra em contato: uma tentativa por dia, durante três dias, em horários diferentes.</li>
                     <li>Depois do contato, você tem três dias úteis para comparecer à unidade.</li>
                   </ol>
@@ -221,7 +221,6 @@ export default function Convocacao() {
               </div>
 
               <dl className="stats">
-                <div><dt>Pontuação</dt><dd>{dados.estado.score ?? '—'}</dd></div>
                 <div><dt>Grupamento</dt><dd>{dados.estado.grupamento || '—'}</dd></div>
                 <div><dt>Turno</dt><dd>{dados.estado.horario || '—'}</dd></div>
               </dl>

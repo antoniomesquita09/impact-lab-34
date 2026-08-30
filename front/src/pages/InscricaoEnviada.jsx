@@ -129,7 +129,6 @@ export default function InscricaoEnviada() {
                   )}
 
                   <dl className="stats">
-                    <div><dt>Pontuação</dt><dd>{dados.estado.score ?? '—'}</dd></div>
                     <div><dt>Grupamento</dt><dd>{dados.estado.grupamento || '—'}</dd></div>
                     <div><dt>Turno</dt><dd>{dados.estado.horario || '—'}</dd></div>
                   </dl>
@@ -143,7 +142,7 @@ export default function InscricaoEnviada() {
                   <p>
                     É o endereço de referência que define quais creches ficam perto e em que ordem
                     elas aparecem. Se ele mudou, vale refazer a escolha: você marca o novo ponto e
-                    escolhe as creches de novo. Suas respostas e sua pontuação não mudam.
+                    escolhe as creches de novo. Suas respostas continuam as mesmas.
                   </p>
                   <button type="button" className="env-bt" onClick={() => navegar('/inscricao/referencia')}>
                     Trocar o endereço de referência

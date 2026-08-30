@@ -193,7 +193,6 @@ export default function Dados() {
   const naoVerificaveis = new Set(dados.nao_verificaveis || [])
   const validadas = dados.perguntas.filter((q) => q.validada)
   const pendentes = dados.perguntas.filter((q) => !q.validada)
-  const pontosConfirmados = validadas.filter((q) => q.valor).reduce((s, q) => s + (q.pontos || 0), 0)
 
   // etapa 0 é a abertura; as demais são um passo cada
   const passos = 2 + pendentes.length // nascimento, turno, e uma por pergunta
@@ -295,7 +294,7 @@ export default function Dados() {
           </h1>
           <p className="lede">
             {validadas.length > 0
-              ? `Consultamos os cadastros e confirmamos ${validadas.length} ${validadas.length === 1 ? 'critério' : 'critérios'} por você${pontosConfirmados > 0 ? `, que já valem ${pontosConfirmados} pontos` : ''}. Se algo estiver errado, procure o CRAS ou a unidade.`
+              ? `Consultamos os cadastros e confirmamos ${validadas.length} ${validadas.length === 1 ? 'critério' : 'critérios'} por você, sem precisar pedir nada. Se algo estiver errado, procure o CRAS ou a unidade.`
               : 'Não encontramos seu CPF nos cadastros da Prefeitura, então desta vez você responde tudo à mão.'}
           </p>
         </div>
