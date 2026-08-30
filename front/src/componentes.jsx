@@ -74,8 +74,8 @@ export function AvisoDemo() {
  * texto — não depende de cor — e cabe igual na lista longa, no cartão de
  * detalhe e na sidebar.
  */
-export function Faixa({ faixa }) {
-  if (!faixa) return <span className="faixa-pill sem">sem estimativa</span>
+export function Faixa({ faixa, motivo }) {
+  if (!faixa) return <span className="faixa-pill sem">{motivo || 'sem estimativa'}</span>
   return <span className={`faixa-pill ${faixa}`}>{ROTULO[faixa]}</span>
 }
 
@@ -85,12 +85,12 @@ export function Faixa({ faixa }) {
  * "não estimada". A honestidade é conteúdo do componente, não um componente
  * diferente.
  */
-export function Chance({ faixa }) {
+export function Chance({ faixa, motivo }) {
   return (
     <span className="chance">
-      <Faixa faixa={faixa} />
+      <Faixa faixa={faixa} motivo={motivo} />
       <span className="sr">
-        {faixa ? 'chance de a matrícula dar certo' : 'chance não calculada para esta unidade'}
+        {faixa ? 'chance de a matrícula dar certo' : motivo || 'chance não calculada para esta unidade'}
       </span>
     </span>
   )

@@ -100,7 +100,20 @@ export default function Creches() {
     const { lat, lon } = dados.referencia
     return (dados.todas || [])
       .filter((u) => !rec.has(u.cod))
-      .map((u) => ({ ...u, nome: nomeUnidade(u.nome), km: distanciaKm(lat, lon, u.lat, u.lon), recomendada: false }))
+      .map((u) => ({
+        ...u,
+        nome: nomeUnidade(u.nome),
+        // `km` vem do servidor (PostGIS); o haversine fica só como rede de
+        // segurança se o campo faltar, para a tela não ficar sem distância
+        km: typeof u.km === 'number' ? u.km : distanciaKm(lat, lon, u.lat, u.lon),
+        recomendada: false,
+        // Só há chance quando a unidade oferece o grupamento e o turno da
+        // criança. O servidor calcula p_pct mesmo para quem não oferece, e
+        // mostrar "65%" para uma turma que não existe ali seria a pior mentira
+        // possível: número alto e bonito para uma vaga inexistente.
+        faixa: u.oferta && u.p_pct != null ? deFaixa(u) : null,
+        semChance: !u.oferta ? 'nao_oferta' : u.p_pct == null ? 'sem_historico' : null,
+      }))
       .sort((a, b) => a.km - b.km)
   }, [dados])
 
@@ -165,6 +178,10 @@ export default function Creches() {
     )
   }
 
+  const turno = `${dados.grupamento} ${dados.horario.toLowerCase()}`
+  const rotuloSemChance = (u) =>
+    u.semChance === 'nao_oferta' ? 'não oferece' : u.semChance === 'sem_historico' ? 'sem histórico' : undefined
+
   const alternar = (cod) =>
     setSel((atual) =>
       atual.includes(cod) ? atual.filter((c) => c !== cod) : atual.length < 5 ? [...atual, cod] : atual,
@@ -225,17 +242,27 @@ export default function Creches() {
       <dl className="stats">
         <div>
           <dt>Chance</dt>
-          <dd className="comfaixa"><Faixa faixa={escolhida.recomendada ? escolhida.faixa : null} /></dd>
+          <dd className="comfaixa"><Faixa faixa={escolhida.faixa} motivo={rotuloSemChance(escolhida)} /></dd>
         </div>
         <div><dt>Distância</dt><dd>{fmtKm(escolhida.km)}</dd></div>
         <div><dt>Turno</dt><dd>{dados.horario}</dd></div>
       </dl>
       {escolhida.recomendada ? (
         <p className="porque"><b>Por que aparece aqui:</b> {escolhida.motivo}</p>
+      ) : escolhida.semChance === 'nao_oferta' ? (
+        <p className="porque">
+          Esta unidade <b>não oferece {turno}</b> — por isso não estimamos chance para ela.
+          Você ainda pode escolhê-la, mas a turma da sua criança não existe ali hoje.
+        </p>
+      ) : escolhida.semChance === 'sem_historico' ? (
+        <p className="porque">
+          Esta unidade <b>não tem histórico suficiente</b> nos processos de 2021 a 2025, então não
+          dá para estimar a chance. Você pode escolhê-la do mesmo jeito.
+        </p>
       ) : (
         <p className="porque">
-          Esta creche não está entre as cinco recomendadas para você, então não
-          calculamos a chance dela. Você pode escolhê-la do mesmo jeito.
+          Estimativa calculada com a mesma régua das recomendadas. Ela não está entre as cinco só
+          porque outras ficaram à frente.
         </p>
       )}
       <button
@@ -276,7 +303,7 @@ export default function Creches() {
               </span>
             )}
           </span>
-          <Chance faixa={u.recomendada ? u.faixa : null} />
+          <Chance faixa={u.faixa} motivo={rotuloSemChance(u)} />
         </button>
       </li>
     )
