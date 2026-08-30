@@ -681,3 +681,61 @@ input, select { font: inherit; color: inherit; }
   .pagina.entrada .app .brand { display: none; }
   .pagina.entrada .rail-head { justify-content: flex-end; }
 }
+
+/* ---------- Dados em etapas: uma pergunta por tela ---------- */
+.progresso { display: flex; align-items: center; gap: 11px; }
+.progresso .barra { flex: 1; height: 5px; border-radius: 999px; background: var(--line-2); overflow: hidden; }
+.progresso .barra i { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width .25s ease; }
+.progresso span {
+  font-family: var(--display); font-size: 11.5px; font-weight: 600; color: var(--ink-3);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
+.etapa { display: flex; flex-direction: column; gap: 16px; animation: entraEtapa .18s ease both; }
+.etapa.saindo { opacity: 0; transform: translateY(-4px); transition: opacity .1s, transform .1s; }
+@keyframes entraEtapa { from { opacity: 0; transform: translateY(8px); } }
+.etapa .titulo h1 { font-size: clamp(21px, 2.3vw, 27px); line-height: 1.2; }
+
+.ilustra { width: 100%; height: 100%; display: block; }
+.ilustra-topo { width: 56px; height: 56px; color: var(--accent); align-self: flex-start; }
+.aviso-sensivel {
+  display: flex; gap: 10px; align-items: flex-start; color: var(--amber) !important;
+  background: var(--amber-soft); border: 1px solid var(--amber-line);
+  border-radius: var(--r-md); padding: 11px 13px;
+}
+.aviso-sensivel .ilustra { width: 22px; height: 22px; flex: none; }
+.selo.leve { background: var(--sunken); color: var(--ink-2); }
+
+/* opções como cartões grandes: alvo confortável no dedo e no mouse */
+.escolhas { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.escolha {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 24px 16px; border: 1.5px solid var(--line); border-radius: var(--r-lg);
+  background: var(--surface); color: var(--ink-2); min-height: 132px; justify-content: center;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.escolha:hover { border-color: #C6D0DC; background: var(--sunken); }
+.escolha .ilustra { width: 44px; height: 44px; }
+.escolha b { font-family: var(--display); font-size: 16px; font-weight: 600; color: var(--ink); }
+.escolha small { font-size: 11.5px; color: var(--ink-3); line-height: 1.35; text-align: center; }
+.escolha.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.escolha.on b { color: var(--accent-ink); }
+.escolha .marca {
+  position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--accent); color: #fff; display: grid; place-items: center;
+}
+
+.field.grande input { padding: 15px 14px; font-size: 16px; }
+
+.passo-acoes { display: flex; align-items: center; gap: 12px; margin-top: auto; padding-top: 4px; }
+.voltar {
+  display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2);
+  font-family: var(--display); font-size: 13.5px; font-weight: 600; padding: 10px 4px;
+}
+.voltar:hover { color: var(--ink); }
+.passo-acoes .cta { margin-left: auto; }
+
+@media (max-width: 720px) {
+  .escolha { min-height: 116px; padding: 18px 12px; }
+  .escolha .ilustra { width: 38px; height: 38px; }
+}

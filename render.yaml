@@ -6,7 +6,7 @@ services:
     name: impact-lab-34
     runtime: go
     region: ohio                # mesma região do Supabase (us-east-2)
-    plan: starter               # free dorme após 15 min → 30-50 s de cold start no pitch. Starter não dorme.
+    plan: free                  # decisão do JP 30/08 14h40: cold start aceito. Acorde a URL antes do pitch.
     healthCheckPath: /api/health
     buildCommand: |
       curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt-get install -y nodejs
