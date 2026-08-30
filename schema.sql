@@ -42,6 +42,9 @@ CREATE TABLE IF NOT EXISTS modelo_meta (chave text PRIMARY KEY, valor text NOT N
 -- Só existe linha onde há fonte: unidade sem dado fica de fora, nunca com zero —
 -- a tela não pode dizer "0 vagas ociosas" quando o que houve foi ausência de fonte.
 -- referencia carrega a data da fonte, que viaja junto com o número até a interface.
+-- ATENÇÃO ao agregar: onde a fonte não informa turno, o pipeline grava a MESMA linha
+-- nos dois turnos (turno_inferido = true) para casar com qualquer busca. Consulta que
+-- filtra um turno está correta; SUM(ociosas) sem filtro de turno conta em dobro.
 CREATE TABLE IF NOT EXISTS unidade_capacidade (
   cod            text NOT NULL REFERENCES unidades(cod) ON DELETE CASCADE,
   grupamento     text NOT NULL,
