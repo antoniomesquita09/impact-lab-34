@@ -1,0 +1,190 @@
+{
+  "_comentario": "Mock da API de verificação de critérios por CPF. Substitua por chamadas reais quando o acesso ao RMI e às bases federais sair. O formato desta resposta é o contrato que o app espera — mantenha-o ao trocar o mock pela API real.",
+  "_fontes": {
+    "28": {"pergunta": "CadÚnico", "pontos": 51, "orgao": "MDS/CAIXA", "via": "RMI assistencia_social.cadunico.indicador", "confianca": "alta"},
+    "31": {"pergunta": "Público-alvo da educação especial", "pontos": 25, "orgao": "SME + INEP", "via": "matrícula com AEE / laudo; RMI campo deficiencia", "confianca": "media"},
+    "17": {"pergunta": "Vítima de violência doméstica", "pontos": 4, "orgao": null, "via": null, "confianca": "nao_verificavel"},
+    "20": {"pergunta": "Família monoparental", "pontos": 4, "orgao": "MDS", "via": "CadÚnico — composição familiar", "confianca": "alta"},
+    "25": {"pergunta": "Pais ou responsáveis com deficiência", "pontos": 3, "orgao": "INSS/MDS", "via": "BPC + marcador de deficiência no CadÚnico", "confianca": "alta"},
+    "18": {"pergunta": "Doença crônica grave na família", "pontos": 3, "orgao": "SMS-Rio", "via": "e-SUS — dado sensível, exige base legal específica", "confianca": "media"},
+    "6": {"pergunta": "Bolsa Família ou Cartão Carioca", "pontos": 2, "orgao": "MDS + SMAS-Rio", "via": "folha do PBF + cadastro do Cartão Carioca", "confianca": "alta"},
+    "16": {"pergunta": "Uso abusivo de álcool ou drogas", "pontos": 2, "orgao": null, "via": null, "confianca": "nao_verificavel"},
+    "12": {"pergunta": "Familiar preso nos últimos 5 anos", "pontos": 2, "orgao": null, "via": null, "confianca": "nao_verificavel"},
+    "23": {"pergunta": "Criança refugiada", "pontos": 2, "orgao": "Polícia Federal", "via": "Registro Nacional Migratório", "confianca": "alta"},
+    "27": {"pergunta": "Aguardou na fila no ano anterior", "pontos": 2, "orgao": "SME-Rio", "via": "base própria de Inscrição Creche", "confianca": "alta"},
+    "29": {"pergunta": "Irmão matriculado na rede", "pontos": 0, "orgao": "SME-Rio", "via": "base própria de matrículas", "confianca": "alta"},
+    "30": {"pergunta": "Responsável com menos de 18 anos", "pontos": 0, "orgao": "Receita Federal", "via": "data de nascimento do CPF", "confianca": "alta"}
+  },
+  "_nao_verificaveis": [17, 16, 12],
+  "cidadaos": [
+    {
+      "cpf": "10000000019",
+      "encontrado": true,
+      "cenario": "Caso principal da demo: vulnerabilidade alta, já esperou um ano, mora longe de creche",
+      "pessoa": {
+        "nome": "Ana Beatriz Ramos", "nascimento": "1996-04-12", "menor_idade": false,
+        "endereco": {"logradouro": "Rua Cinco de Julho", "numero": "120", "bairro": "Senador Camará", "cep": "21832-000", "latitude": -22.8830, "longitude": -43.5010},
+        "telefone": {"ddd": "21", "numero": "98765-4321", "atualizado_em": "2026-07-02"}
+      },
+      "criterios": [
+        {"pergunta_id": 28, "valor": true,  "fonte": "CadÚnico", "orgao": "MDS/CAIXA", "referencia": "2026-03-10", "confianca": "alta", "detalhe": "cadastro atualizado"},
+        {"pergunta_id": 6,  "valor": true,  "fonte": "Bolsa Família", "orgao": "MDS", "referencia": "2026-07", "confianca": "alta"},
+        {"pergunta_id": 20, "valor": true,  "fonte": "CadÚnico", "orgao": "MDS", "referencia": "2026-03-10", "confianca": "alta", "detalhe": "responsável único no domicílio"},
+        {"pergunta_id": 25, "valor": false, "fonte": "BPC/CadÚnico", "orgao": "INSS/MDS", "referencia": "2026-03-10", "confianca": "alta"},
+        {"pergunta_id": 23, "valor": false, "fonte": "Registro Nacional Migratório", "orgao": "Polícia Federal", "referencia": "2026-08-01", "confianca": "alta"},
+        {"pergunta_id": 27, "valor": true,  "fonte": "Inscrição Creche", "orgao": "SME-Rio", "referencia": "2025", "confianca": "alta", "detalhe": "lista de espera em 2025, não convocada"},
+        {"pergunta_id": 29, "valor": false, "fonte": "Matrículas da rede", "orgao": "SME-Rio", "referencia": "2026-08", "confianca": "alta"},
+        {"pergunta_id": 30, "valor": false, "fonte": "Receita Federal", "orgao": "RFB", "referencia": "2026-08-30", "confianca": "alta"}
+      ]
+    },
+    {
+      "cpf": "10000000108",
+      "encontrado": true,
+      "cenario": "Contraste: nenhum critério social, mora perto de várias creches",
+      "pessoa": {
+        "nome": "Bruno Carvalho", "nascimento": "1990-09-30", "menor_idade": false,
+        "endereco": {"logradouro": "Rua Voluntários da Pátria", "numero": "45", "bairro": "Botafogo", "cep": "22250-040", "latitude": -22.9520, "longitude": -43.1870},
+        "telefone": {"ddd": "21", "numero": "91234-5678", "atualizado_em": "2024-01-15"}
+      },
+      "criterios": [
+        {"pergunta_id": 28, "valor": false, "fonte": "CadÚnico", "orgao": "MDS/CAIXA", "referencia": "2026-08-30", "confianca": "alta"},
+        {"pergunta_id": 6,  "valor": false, "fonte": "Bolsa Família", "orgao": "MDS", "referencia": "2026-07", "confianca": "alta"},
+        {"pergunta_id": 20, "valor": false, "fonte": "CadÚnico", "orgao": "MDS", "referencia": "2026-08-30", "confianca": "alta"},
+        {"pergunta_id": 25, "valor": false, "fonte": "BPC/CadÚnico", "orgao": "INSS/MDS", "referencia": "2026-08-30", "confianca": "alta"},
+        {"pergunta_id": 23, "valor": false, "fonte": "Registro Nacional Migratório", "orgao": "Polícia Federal", "referencia": "2026-08-01", "confianca": "alta"},
+        {"pergunta_id": 27, "valor": false, "fonte": "Inscrição Creche", "orgao": "SME-Rio", "referencia": "2025", "confianca": "alta"},
+        {"pergunta_id": 29, "valor": false, "fonte": "Matrículas da rede", "orgao": "SME-Rio", "referencia": "2026-08", "confianca": "alta"},
+        {"pergunta_id": 30, "valor": false, "fonte": "Receita Federal", "orgao": "RFB", "referencia": "2026-08-30", "confianca": "alta"}
+      ]
+    },
+    {
+      "cpf": "10000000280",
+      "encontrado": true,
+      "cenario": "Sem endereço no cadastro — o mapa abre no Rio inteiro até a família marcar o ponto",
+      "pessoa": {
+        "nome": "Carla Nunes", "nascimento": "2001-02-20", "menor_idade": false,
+        "endereco": null,
+        "telefone": {"ddd": "21", "numero": "99876-1234", "atualizado_em": "2025-11-20"}
+      },
+      "criterios": [
+        {"pergunta_id": 28, "valor": true,  "fonte": "CadÚnico", "orgao": "MDS/CAIXA", "referencia": "2025-01-08", "confianca": "alta", "detalhe": "cadastro desatualizado — procure o CRAS"},
+        {"pergunta_id": 6,  "valor": false, "fonte": "Bolsa Família", "orgao": "MDS", "referencia": "2026-07", "confianca": "alta"},
+        {"pergunta_id": 20, "valor": false, "fonte": "CadÚnico", "orgao": "MDS", "referencia": "2025-01-08", "confianca": "alta"},
+        {"pergunta_id": 25, "valor": true,  "fonte": "BPC", "orgao": "INSS", "referencia": "2026-06-01", "confianca": "alta", "detalhe": "benefício de prestação continuada ativo"},
+        {"pergunta_id": 23, "valor": false, "fonte": "Registro Nacional Migratório", "orgao": "Polícia Federal", "referencia": "2026-08-01", "confianca": "alta"},
+        {"pergunta_id": 27, "valor": false, "fonte": "Inscrição Creche", "orgao": "SME-Rio", "referencia": "2025", "confianca": "alta"},
+        {"pergunta_id": 29, "valor": true,  "fonte": "Matrículas da rede", "orgao": "SME-Rio", "referencia": "2026-08", "confianca": "alta", "detalhe": "irmão em unidade parceira"},
+        {"pergunta_id": 30, "valor": false, "fonte": "Receita Federal", "orgao": "RFB", "referencia": "2026-08-30", "confianca": "alta"}
+      ]
+    },
+    {
+      "cpf": "10000000361",
+      "encontrado": true,
+      "cenario": "Critério de confiança média: educação especial precisa de conferência humana",
+      "pessoa": {
+        "nome": "Daniel Prates", "nascimento": "1988-12-05", "menor_idade": false,
+        "endereco": {"logradouro": "Rua Coronel Agostinho", "numero": "300", "bairro": "Campo Grande", "cep": "23050-100", "latitude": -22.9050, "longitude": -43.5610},
+        "telefone": {"ddd": "21", "numero": "97777-2222", "atualizado_em": "2026-05-14"}
+      },
+      "criterios": [
+        {"pergunta_id": 28, "valor": true,  "fonte": "CadÚnico", "orgao": "MDS/CAIXA", "referencia": "2026-02-18", "confianca": "alta"},
+        {"pergunta_id": 31, "valor": true,  "fonte": "Cadastro de saúde", "orgao": "SMS-Rio", "referencia": "2026-04-02", "confianca": "media", "detalhe": "indício de deficiência no cadastro — a unidade confirma com laudo"},
+        {"pergunta_id": 6,  "valor": true,  "fonte": "Bolsa Família", "orgao": "MDS", "referencia": "2026-07", "confianca": "alta"},
+        {"pergunta_id": 20, "valor": false, "fonte": "CadÚnico", "orgao": "MDS", "referencia": "2026-02-18", "confianca": "alta"},
+        {"pergunta_id": 25, "valor": false, "fonte": "BPC/CadÚnico", "orgao": "INSS/MDS", "referencia": "2026-02-18", "confianca": "alta"},
+        {"pergunta_id": 23, "valor": false, "fonte": "Registro Nacional Migratório", "orgao": "Polícia Federal", "referencia": "2026-08-01", "confianca": "alta"},
+        {"pergunta_id": 27, "valor": false, "fonte": "Inscrição Creche", "orgao": "SME-Rio", "referencia": "2025", "confianca": "alta"},
+        {"pergunta_id": 29, "valor": false, "fonte": "Matrículas da rede", "orgao": "SME-Rio", "referencia": "2026-08", "confianca": "alta"},
+        {"pergunta_id": 30, "valor": false, "fonte": "Receita Federal", "orgao": "RFB", "referencia": "2026-08-30", "confianca": "alta"}
+      ]
+    },
+    {
+      "cpf": "10000000442",
+      "encontrado": true,
+      "cenario": "Critério raro: família refugiada",
+      "pessoa": {
+        "nome": "Elena Ferreira", "nascimento": "1994-07-19", "menor_idade": false,
+        "endereco": {"logradouro": "Rua do Lavradio", "numero": "88", "bairro": "Centro", "cep": "20230-070", "latitude": -22.9068, "longitude": -43.1855},
+        "telefone": {"ddd": "21", "numero": "96543-8888", "atualizado_em": "2026-06-30"}
+      },
+      "criterios": [
+        {"pergunta_id": 28, "valor": true,  "fonte": "CadÚnico", "orgao": "MDS/CAIXA", "referencia": "2026-05-22", "confianca": "alta"},
+        {"pergunta_id": 6,  "valor": false, "fonte": "Bolsa Família", "orgao": "MDS", "referencia": "2026-07", "confianca": "alta"},
+        {"pergunta_id": 20, "valor": true,  "fonte": "CadÚnico", "orgao": "MDS", "referencia": "2026-05-22", "confianca": "alta"},
+        {"pergunta_id": 25, "valor": false, "fonte": "BPC/CadÚnico", "orgao": "INSS/MDS", "referencia": "2026-05-22", "confianca": "alta"},
+        {"pergunta_id": 23, "valor": true,  "fonte": "Registro Nacional Migratório", "orgao": "Polícia Federal", "referencia": "2026-01-15", "confianca": "alta", "detalhe": "refúgio reconhecido"},
+        {"pergunta_id": 27, "valor": false, "fonte": "Inscrição Creche", "orgao": "SME-Rio", "referencia": "2025", "confianca": "alta"},
+        {"pergunta_id": 29, "valor": false, "fonte": "Matrículas da rede", "orgao": "SME-Rio", "referencia": "2026-08", "confianca": "alta"},
+        {"pergunta_id": 30, "valor": false, "fonte": "Receita Federal", "orgao": "RFB", "referencia": "2026-08-30", "confianca": "alta"}
+      ]
+    },
+    {
+      "cpf": "10000000523",
+      "encontrado": true,
+      "cenario": "Responsável menor de 18 — aciona o critério de desempate",
+      "pessoa": {
+        "nome": "Fábio Lopes", "nascimento": "2009-03-08", "menor_idade": true,
+        "endereco": {"logradouro": "Rua Silva Cardoso", "numero": "22", "bairro": "Bangu", "cep": "21810-190", "latitude": -22.8760, "longitude": -43.4650},
+        "telefone": {"ddd": "21", "numero": "95555-3333", "atualizado_em": "2026-08-01"}
+      },
+      "criterios": [
+        {"pergunta_id": 28, "valor": true,  "fonte": "CadÚnico", "orgao": "MDS/CAIXA", "referencia": "2026-06-11", "confianca": "alta"},
+        {"pergunta_id": 6,  "valor": true,  "fonte": "Bolsa Família", "orgao": "MDS", "referencia": "2026-07", "confianca": "alta"},
+        {"pergunta_id": 20, "valor": true,  "fonte": "CadÚnico", "orgao": "MDS", "referencia": "2026-06-11", "confianca": "alta"},
+        {"pergunta_id": 25, "valor": false, "fonte": "BPC/CadÚnico", "orgao": "INSS/MDS", "referencia": "2026-06-11", "confianca": "alta"},
+        {"pergunta_id": 23, "valor": false, "fonte": "Registro Nacional Migratório", "orgao": "Polícia Federal", "referencia": "2026-08-01", "confianca": "alta"},
+        {"pergunta_id": 27, "valor": false, "fonte": "Inscrição Creche", "orgao": "SME-Rio", "referencia": "2025", "confianca": "alta"},
+        {"pergunta_id": 29, "valor": false, "fonte": "Matrículas da rede", "orgao": "SME-Rio", "referencia": "2026-08", "confianca": "alta"},
+        {"pergunta_id": 30, "valor": true,  "fonte": "Receita Federal", "orgao": "RFB", "referencia": "2026-08-30", "confianca": "alta", "detalhe": "17 anos"}
+      ]
+    },
+    {
+      "cpf": "10000000604",
+      "encontrado": true,
+      "cenario": "Cartão Carioca sem CadÚnico — os critérios são independentes",
+      "pessoa": {
+        "nome": "Iara Santos", "nascimento": "1992-10-27", "menor_idade": false,
+        "endereco": {"logradouro": "Estrada do Portela", "numero": "410", "bairro": "Madureira", "cep": "21351-030", "latitude": -22.8730, "longitude": -43.3390},
+        "telefone": {"ddd": "21", "numero": "94444-7777", "atualizado_em": "2026-03-19"}
+      },
+      "criterios": [
+        {"pergunta_id": 28, "valor": false, "fonte": "CadÚnico", "orgao": "MDS/CAIXA", "referencia": "2026-08-30", "confianca": "alta"},
+        {"pergunta_id": 6,  "valor": true,  "fonte": "Cartão Carioca", "orgao": "SMAS-Rio", "referencia": "2026-07-01", "confianca": "alta", "detalhe": "beneficiária ativa"},
+        {"pergunta_id": 20, "valor": false, "fonte": "CadÚnico", "orgao": "MDS", "referencia": "2026-08-30", "confianca": "alta"},
+        {"pergunta_id": 25, "valor": false, "fonte": "BPC/CadÚnico", "orgao": "INSS/MDS", "referencia": "2026-08-30", "confianca": "alta"},
+        {"pergunta_id": 23, "valor": false, "fonte": "Registro Nacional Migratório", "orgao": "Polícia Federal", "referencia": "2026-08-01", "confianca": "alta"},
+        {"pergunta_id": 27, "valor": true,  "fonte": "Inscrição Creche", "orgao": "SME-Rio", "referencia": "2025", "confianca": "alta"},
+        {"pergunta_id": 29, "valor": false, "fonte": "Matrículas da rede", "orgao": "SME-Rio", "referencia": "2026-08", "confianca": "alta"},
+        {"pergunta_id": 30, "valor": false, "fonte": "Receita Federal", "orgao": "RFB", "referencia": "2026-08-30", "confianca": "alta"}
+      ]
+    },
+    {
+      "cpf": "10000000795",
+      "encontrado": true,
+      "cenario": "Todos os critérios verificáveis positivos — teste de teto do score",
+      "pessoa": {
+        "nome": "João Vitor Alves", "nascimento": "2008-05-30", "menor_idade": true,
+        "endereco": {"logradouro": "Rua Felipe Cardoso", "numero": "15", "bairro": "Santa Cruz", "cep": "23520-000", "latitude": -22.9180, "longitude": -43.6840},
+        "telefone": {"ddd": "21", "numero": "93333-1111", "atualizado_em": "2026-08-20"}
+      },
+      "criterios": [
+        {"pergunta_id": 28, "valor": true, "fonte": "CadÚnico", "orgao": "MDS/CAIXA", "referencia": "2026-07-30", "confianca": "alta"},
+        {"pergunta_id": 31, "valor": true, "fonte": "Cadastro de saúde", "orgao": "SMS-Rio", "referencia": "2026-07-30", "confianca": "media"},
+        {"pergunta_id": 6,  "valor": true, "fonte": "Bolsa Família", "orgao": "MDS", "referencia": "2026-07", "confianca": "alta"},
+        {"pergunta_id": 20, "valor": true, "fonte": "CadÚnico", "orgao": "MDS", "referencia": "2026-07-30", "confianca": "alta"},
+        {"pergunta_id": 25, "valor": true, "fonte": "BPC", "orgao": "INSS", "referencia": "2026-07-30", "confianca": "alta"},
+        {"pergunta_id": 23, "valor": true, "fonte": "Registro Nacional Migratório", "orgao": "Polícia Federal", "referencia": "2026-02-10", "confianca": "alta"},
+        {"pergunta_id": 27, "valor": true, "fonte": "Inscrição Creche", "orgao": "SME-Rio", "referencia": "2025", "confianca": "alta"},
+        {"pergunta_id": 29, "valor": true, "fonte": "Matrículas da rede", "orgao": "SME-Rio", "referencia": "2026-08", "confianca": "alta"},
+        {"pergunta_id": 30, "valor": true, "fonte": "Receita Federal", "orgao": "RFB", "referencia": "2026-08-30", "confianca": "alta"}
+      ]
+    },
+    {
+      "cpf": "10000000876",
+      "encontrado": false,
+      "cenario": "CPF válido mas sem registro nas bases — a família responde tudo à mão",
+      "pessoa": null,
+      "criterios": []
+    }
+  ]
+}

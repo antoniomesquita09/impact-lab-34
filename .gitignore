@@ -1,0 +1,5 @@
+dados/
+dados
+.env
+*.env
+.DS_Store
