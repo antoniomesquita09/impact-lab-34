@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-const mockPath = "../../mocks/criterios.json"
+const mockPath = "../mocks/criterios.json"
 
 func cli() *Cliente { return NovoCliente("", "", mockPath) }
 

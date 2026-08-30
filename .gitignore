@@ -1,5 +1,9 @@
-dados/
 dados
+dados/
 .env
 *.env
+node_modules/
+front/dist/
+server
+prep
 .DS_Store

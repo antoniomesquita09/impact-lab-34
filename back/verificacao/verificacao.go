@@ -1,7 +1,7 @@
 // Package verificacao consulta, por CPF, os critérios de vulnerabilidade que a
 // Prefeitura já consegue confirmar sozinha — sem pedir à família.
 //
-// Hoje responde de um mock (mocks/criterios.json). Quando o acesso às fontes reais
+// Hoje responde de um mock (back/mocks/criterios.json). Quando o acesso às fontes reais
 // sair, basta definir VERIFICACAO_BASE_URL e VERIFICACAO_TOKEN: o contrato da
 // resposta é o mesmo, e nada mais no app precisa mudar.
 //

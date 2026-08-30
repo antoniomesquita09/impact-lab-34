@@ -4,10 +4,10 @@ O que a Prefeitura já consegue confirmar sozinha, sem perguntar à família.
 
 Hoje isto responde do arquivo `criterios.json`. Quando o acesso às fontes reais sair, defina
 `VERIFICACAO_BASE_URL` e `VERIFICACAO_TOKEN` — o contrato da resposta é o mesmo e nada mais
-no app muda. O cliente está em `internal/verificacao`.
+no app muda. O cliente está em `back/verificacao`.
 
 ```go
-cli := verificacao.NovoDoAmbiente("mocks/criterios.json")
+cli := verificacao.NovoDoAmbiente("back/mocks/criterios.json")
 r, err := cli.Consultar(ctx, "100.000.000-19")   // aceita com ou sem máscara
 c := r.PorPergunta()                             // map[int]Criterio, casa com a régua
 c[28].Valor        // true  — está no CadÚnico

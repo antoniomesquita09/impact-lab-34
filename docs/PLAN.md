@@ -4,7 +4,7 @@
 
 **Goal:** Um novo fluxo de inscrição em creche onde a família entra com CPF, tem os critérios pré-validados contra o RMI e a base da SME, completa só o que falta, informa um local de referência e recebe no mapa as creches recomendadas por proximidade × probabilidade de entrar.
 
-**Architecture:** Duas peças independentes. (1) `cmd/prep` — pipeline anual em Go que lê os dados brutos da SME, agrega, calibra o modelo e grava direto no Postgres numa transação; não faz parte do runtime. (2) `cmd/server` — API Go + SPA React, que só lê o Postgres. A busca geográfica é `ST_DWithin` no PostGIS; a fórmula de probabilidade fica em Go, testável e auditável.
+**Architecture:** Duas peças independentes. (1) `pipeline` — pipeline anual em Go que lê os dados brutos da SME, agrega, calibra o modelo e grava direto no Postgres numa transação; não faz parte do runtime. (2) `back` — API Go + SPA React, que só lê o Postgres. A busca geográfica é `ST_DWithin` no PostGIS; a fórmula de probabilidade fica em Go, testável e auditável.
 
 **Tech Stack:** Go 1.25 (stdlib `net/http`, `pgx/v5`, `excelize/v2`, `bcrypt`) · Supabase (Postgres 15 + PostGIS) · Vite + React + MapLibre GL JS (`react-map-gl`) + OpenFreeMap · deploy Render.
 
@@ -21,33 +21,34 @@
 - Régua 2025 (`id → pontos`): `28:51, 31:25, 17:4, 20:4, 25:3, 18:3, 6:2, 16:2, 12:2, 23:2, 27:2, 29:0(desempate), 30:0(desempate)`. Soma 100.
 - Probabilidade: `p = clamp(p_base[posicao][faixa] * fator, 0.02, 0.95)`, `fator = clamp(taxa_ref/mediana, 0.5, 1.6)`, `fator = 1.0` se `n_ref < 20`. Faixas de km: `[0,2)`, `[2,5)`, `[5,∞)`. **A pontuação social não entra em `p`** — em 2025 quem pontua e quem não pontua entra na mesma taxa (67,7%). O README diz isso.
 - Interface em português, sentence case, sem jargão de sistema ("verificado pela Prefeitura", nunca "validado via RMI").
-- Verificação de critérios por CPF: usar **`internal/verificacao`** (já implementado). Não criar outro cliente de RMI.
+- Verificação de critérios por CPF: usar **`back/verificacao`** (já implementado). Não criar outro cliente de RMI.
 - Modelos Claude: Sonnet por padrão; Opus só para destravar.
 
 ## Estrutura de arquivos
 
 ```
-impact-lab-34/
+impact-lab-34/                     um go.mod só na raiz — pipeline/ e back/ compartilham modelo/ e db/
 ├── go.mod  go.sum  .gitignore  .env.example  README.md  render.yaml
-├── mocks/criterios.json + README.md   fixtures da verificação por CPF     ✅ PRONTO
 ├── schema.sql                     DDL completo (roda uma vez no Supabase)
-├── cmd/
-│   ├── prep/main.go               pipeline anual: brutos → Postgres
-│   └── server/main.go             sobe a API + serve web/dist
-├── internal/
+├── docs/                          PLAN.md, camadas-de-verificacao.md
+├── pipeline/                      ingestão anual: brutos → Supabase        go run ./pipeline
+│   ├── main.go
+│   └── prep/leitura.go            csv.gz e xlsx → structs                 (+ _test)
+│       prep/calibra.go            agrega taxas e matriz 5×3               (+ _test)
+│       prep/grava.go              escreve no Postgres em transação
+├── back/                          API + serve front/dist                  go run ./back
+│   ├── main.go
 │   ├── db/db.go                   pool pgx
 │   ├── modelo/modelo.go           tipos + carga da régua/modelo do banco  (+ _test)
-│   ├── prep/leitura.go            csv.gz e xlsx → structs                 (+ _test)
-│   ├── prep/calibra.go            agrega taxas e matriz 5×3               (+ _test)
-│   ├── prep/grava.go              escreve no Postgres em transação
 │   ├── verificacao/verificacao.go critérios por CPF: mock/API real        (+ _test)  ✅ PRONTO
+│   ├── mocks/criterios.json       fixtures da verificação por CPF (+ README)          ✅ PRONTO
 │   ├── geo/cep.go                 BrasilAPI (base URL injetável)          (+ _test)
 │   ├── recomenda/recomenda.go     fórmula de probabilidade + ranking      (+ _test)
 │   └── api/
-│       ├── router.go              mux, CORS de dev, SPA fallback
+│       ├── router.go              mux, /api/health, SPA fallback
 │       ├── auth.go                registrar/entrar/eu + middleware        (+ _test)
 │       └── inscricao.go           preparar/respostas/referencia/…         (+ _test)
-└── web/
+└── front/                         Vite + React + MapLibre                 cd front && npm run dev
     ├── package.json  vite.config.js  index.html
     └── src/{main.jsx,api.js,App.jsx,styles.css,pages/*.jsx}
 ```
@@ -57,7 +58,7 @@ impact-lab-34/
 ### Task 0: Supabase, esquema e esqueleto Go
 
 **Files:**
-- Create: `go.mod`, `.gitignore`, `.env.example`, `schema.sql`, `internal/db/db.go`
+- Create: `go.mod`, `.gitignore`, `.env.example`, `schema.sql`, `back/db/db.go`
 
 - [ ] **Step 1: Criar o projeto no Supabase**
 
@@ -67,12 +68,10 @@ No painel: novo projeto, região **East US (North Virginia)** (mesma do Render, 
 - [ ] **Step 2: Esqueleto**
 
 ```bash
-mkdir -p impact-lab-34/{cmd/{prep,server},internal/{db,modelo,prep,rmi,geo,recomenda,api},web} && cd matricula-carioca
-git init -b main
-ln -s ../dados dados
-printf 'dados\n.env\nnode_modules/\nweb/dist/\nserver\nprep\n' > .gitignore
-printf 'DATABASE_URL=postgresql://postgres.SEU_REF:SENHA@aws-0-us-east-1.pooler.supabase.com:5432/postgres\n# VERIFICACAO_BASE_URL=\n# VERIFICACAO_TOKEN=\n' > .env.example
-go mod init github.com/antoniomesquita09/impact-lab-34
+# o repositório já existe e está clonado em impact-lab-34/ (go.mod na raiz, back/verificacao pronto)
+cd impact-lab-34
+mkdir -p pipeline/prep back/{db,modelo,api,rmi,geo,recomenda} front
+ln -s ../dados dados                      # dados/ está no .gitignore
 go get github.com/jackc/pgx/v5/pgxpool github.com/xuri/excelize/v2 golang.org/x/crypto/bcrypt
 ```
 
@@ -150,7 +149,7 @@ CREATE TABLE IF NOT EXISTS inscricoes (
 
 Aplicar: colar no **SQL Editor** do Supabase e rodar. Conferir em *Table Editor* que as 8 tabelas existem.
 
-- [ ] **Step 4: `internal/db/db.go`**
+- [ ] **Step 4: `back/db/db.go`**
 
 ```go
 package db
@@ -190,7 +189,7 @@ func Abrir(ctx context.Context) (*pgxpool.Pool, error) {
 export DATABASE_URL='...'   # nunca commitar
 cat > /tmp/ping.go <<'EOF'
 package main
-import ("context";"fmt";"github.com/antoniomesquita09/impact-lab-34/internal/db")
+import ("context";"fmt";"github.com/antoniomesquita09/impact-lab-34/back/db")
 func main(){ p,err:=db.Abrir(context.Background()); if err!=nil{panic(err)}; defer p.Close(); fmt.Println("ok") }
 EOF
 go run /tmp/ping.go   # espera: ok
@@ -199,10 +198,10 @@ git add -A && git commit -m "chore: esqueleto Go, esquema Postgres/PostGIS e con
 
 ---
 
-### Task 1: Leitura dos dados brutos — `internal/prep/leitura.go`
+### Task 1: Leitura dos dados brutos — `pipeline/prep/leitura.go`
 
 **Files:**
-- Create: `internal/prep/leitura.go`, `internal/prep/leitura_test.go`
+- Create: `pipeline/prep/leitura.go`, `pipeline/prep/leitura_test.go`
 
 **Interfaces:**
 - Produces:
@@ -215,7 +214,7 @@ git add -A && git commit -m "chore: esqueleto Go, esquema Postgres/PostGIS e con
 - [ ] **Step 1: Teste**
 
 ```go
-// internal/prep/leitura_test.go
+// pipeline/prep/leitura_test.go
 package prep
 
 import "testing"
@@ -252,12 +251,12 @@ func TestLerCoordenadasEJuncao(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Rodar — deve falhar** — `go test ./internal/prep/ -run TestLer -v` → não compila.
+- [ ] **Step 2: Rodar — deve falhar** — `go test ./pipeline/prep/ -run TestLer -v` → não compila.
 
 - [ ] **Step 3: Implementar**
 
 ```go
-// internal/prep/leitura.go
+// pipeline/prep/leitura.go
 package prep
 
 import (
@@ -356,15 +355,15 @@ func LerCoordenadas(path string) ([]Coord, error) {
 }
 ```
 
-- [ ] **Step 4: `go test ./internal/prep/ -run TestLer -v` → PASS** (leva ~3 s)
-- [ ] **Step 5: Commit** — `git add internal/prep && git commit -m "feat(prep): leitura streaming do CSV.gz e do xlsx de coordenadas"`
+- [ ] **Step 4: `go test ./pipeline/prep/ -run TestLer -v` → PASS** (leva ~3 s)
+- [ ] **Step 5: Commit** — `git add pipeline/prep && git commit -m "feat(prep): leitura streaming do CSV.gz e do xlsx de coordenadas"`
 
 ---
 
-### Task 2: Agregação e calibração — `internal/prep/calibra.go`
+### Task 2: Agregação e calibração — `pipeline/prep/calibra.go`
 
 **Files:**
-- Create: `internal/prep/calibra.go`, `internal/prep/calibra_test.go`
+- Create: `pipeline/prep/calibra.go`, `pipeline/prep/calibra_test.go`
 
 **Interfaces:**
 - Produces:
@@ -380,7 +379,7 @@ A distância na calibração é da unidade ao **centróide do bairro do respons�
 - [ ] **Step 1: Teste**
 
 ```go
-// internal/prep/calibra_test.go
+// pipeline/prep/calibra_test.go
 package prep
 
 import (
@@ -430,7 +429,7 @@ func TestAgregar(t *testing.T) {
 - [ ] **Step 3: Implementar**
 
 ```go
-// internal/prep/calibra.go
+// pipeline/prep/calibra.go
 package prep
 
 import (
@@ -568,22 +567,22 @@ func Agregar(qaPath, locPath string, anoRef int) ([]Unidade, Modelo, error) {
 }
 ```
 
-- [ ] **Step 4: `go test ./internal/prep/ -v` → PASS**
-- [ ] **Step 5: Commit** — `git add internal/prep && git commit -m "feat(prep): agregação por unidade e calibração da matriz 5x3"`
+- [ ] **Step 4: `go test ./pipeline/prep/ -v` → PASS**
+- [ ] **Step 5: Commit** — `git add pipeline/prep && git commit -m "feat(prep): agregação por unidade e calibração da matriz 5x3"`
 
 ---
 
-### Task 3: Gravação no Postgres + `cmd/prep`
+### Task 3: Gravação no Postgres + `pipeline`
 
 **Files:**
-- Create: `internal/prep/grava.go`, `cmd/prep/main.go`
+- Create: `pipeline/prep/grava.go`, `pipeline/main.go`
 
 **Interfaces:**
 - Consumes: Task 2.
 - Produces: `Gravar(ctx, pool *pgxpool.Pool, uns []Unidade, m Modelo, perguntas []Pergunta) error` — idempotente, numa transação.
 - Produces: `type Pergunta struct { ID, Pontos, Ordem int; Texto string; Desempate, Validavel bool }` e `ReguaPadrao() []Pergunta` (a régua 2025).
 
-- [ ] **Step 1: `internal/prep/grava.go`**
+- [ ] **Step 1: `pipeline/prep/grava.go`**
 
 ```go
 package prep
@@ -681,12 +680,12 @@ func Gravar(ctx context.Context, pool *pgxpool.Pool, uns []Unidade, m Modelo, pe
 }
 ```
 
-- [ ] **Step 2: `cmd/prep/main.go`**
+- [ ] **Step 2: `pipeline/main.go`**
 
 ```go
 // Pipeline anual da Matrícula Carioca.
 // Roda uma vez por ano, antes do processo de matrícula:
-//   go run ./cmd/prep -qa <QueryA.csv.gz> -loc <Unidades.xlsx> -ano 2025
+//   go run ./pipeline -qa <QueryA.csv.gz> -loc <Unidades.xlsx> -ano 2025
 // Lê os dados brutos da SME, agrega, calibra o modelo e grava no Postgres.
 // Não faz parte do runtime: o servidor nunca lê CSV.
 package main
@@ -698,8 +697,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/antoniomesquita09/impact-lab-34/internal/db"
-	"github.com/antoniomesquita09/impact-lab-34/internal/prep"
+	"github.com/antoniomesquita09/impact-lab-34/back/db"
+	"github.com/antoniomesquita09/impact-lab-34/pipeline/prep"
 )
 
 func main() {
@@ -736,7 +735,7 @@ func main() {
 
 ```bash
 export DATABASE_URL='...'
-go run ./cmd/prep
+go run ./pipeline
 ```
 Esperado: ~820 unidades, mediana ≈ 0,34, `1ª opção <2km ≈ 0.403`. Conferir no SQL Editor:
 ```sql
@@ -747,7 +746,7 @@ SELECT * FROM modelo_meta;
 ```
 
 - [ ] **Step 4: Rodar de novo** — tem que dar o mesmo resultado, sem duplicar (idempotência).
-- [ ] **Step 5: Commit** — `git add internal/prep cmd/prep && git commit -m "feat(prep): pipeline anual grava dados de referência no Postgres"`
+- [ ] **Step 5: Commit** — `git add pipeline/prep pipeline && git commit -m "feat(prep): pipeline anual grava dados de referência no Postgres"`
 
 ---
 
@@ -760,8 +759,8 @@ o briefing cita: **~8.100 vagas ociosas com fila aberta** (públicas 53.432 − 
 parceiras 1.665). Levantado pela sessão irmã e conferido aqui: a junção casa 488/488.
 
 **Files:**
-- Modify: `schema.sql` (tabela nova), `internal/prep/leitura.go`, `internal/prep/calibra.go`, `internal/prep/grava.go`
-- Modify: `internal/recomenda/recomenda.go` (expor `VagasOciosas` na `Sugestao`)
+- Modify: `schema.sql` (tabela nova), `pipeline/prep/leitura.go`, `pipeline/prep/calibra.go`, `pipeline/prep/grava.go`
+- Modify: `back/recomenda/recomenda.go` (expor `VagasOciosas` na `Sugestao`)
 
 **Fontes** (a primeira **não** vem do repositório do desafio — foi baixada da Transparência–Creches
 da SME, https://educacao.prefeitura.rio/transparenciacreches/, e vive em `dados/externos/`):
@@ -829,7 +828,7 @@ errar a unidade.
 Na interface: onde `turno_inferido = false`, o card pode dizer "12 vagas ociosas · integral";
 onde for `true`, mostre o grupamento agregado sem afirmar o turno. Não invente precisão.
 
-- [ ] **Step 2: Leitura** — em `internal/prep/leitura.go`, acrescentar `LerCapacidadePublica(path string) (map[string]map[string]int, error)` (chave externa: `ChaveUnidade`; interna: grupamento → vagas) e `LerParceiras(path string) (map[string]map[string]struct{ Meta, Aluno int }, error)` aplicando `zfill(5)` no `CÓDIGO SGA`. Teste: total público = **53.432**, e `Berçário 10.626 / Maternal I 18.622 / Maternal II 24.184`.
+- [ ] **Step 2: Leitura** — em `pipeline/prep/leitura.go`, acrescentar `LerCapacidadePublica(path string) (map[string]map[string]int, error)` (chave externa: `ChaveUnidade`; interna: grupamento → vagas) e `LerParceiras(path string) (map[string]map[string]struct{ Meta, Aluno int }, error)` aplicando `zfill(5)` no `CÓDIGO SGA`. Teste: total público = **53.432**, e `Berçário 10.626 / Maternal I 18.622 / Maternal II 24.184`.
 
 - [ ] **Step 3: Gravação** — `TRUNCATE unidade_capacidade` dentro da mesma transação da Task 3, e `CopyFrom` das linhas, com `ociosas = max(capacidade - matriculados, 0)`.
 
@@ -840,10 +839,10 @@ onde for `true`, mostre o grupamento agregado sem afirmar o turno. Não invente 
 
 ---
 
-### Task 4: Régua e modelo em memória — `internal/modelo/modelo.go`
+### Task 4: Régua e modelo em memória — `back/modelo/modelo.go`
 
 **Files:**
-- Create: `internal/modelo/modelo.go`, `internal/modelo/modelo_test.go`
+- Create: `back/modelo/modelo.go`, `back/modelo/modelo_test.go`
 
 **Interfaces:**
 - Produces:
@@ -856,7 +855,7 @@ onde for `true`, mostre o grupamento agregado sem afirmar o turno. Não invente 
 - [ ] **Step 1: Teste**
 
 ```go
-// internal/modelo/modelo_test.go
+// back/modelo/modelo_test.go
 package modelo
 
 import (
@@ -899,7 +898,7 @@ func TestGrupamento(t *testing.T) {
 - [ ] **Step 3: Implementar**
 
 ```go
-// internal/modelo/modelo.go
+// back/modelo/modelo.go
 package modelo
 
 import (
@@ -982,23 +981,23 @@ func GrupamentoPorNascimento(nasc time.Time, anoLetivo int) string {
 }
 ```
 
-- [ ] **Step 4: `go test ./internal/modelo/ -v` → PASS**
-- [ ] **Step 5: Commit** — `git add internal/modelo && git commit -m "feat: carga da régua e do modelo do banco, score e grupamento"`
+- [ ] **Step 4: `go test ./back/modelo/ -v` → PASS**
+- [ ] **Step 5: Commit** — `git add back/modelo && git commit -m "feat: carga da régua e do modelo do banco, score e grupamento"`
 
 ---
 
 ### Task 5: Verificação de critérios por CPF — ✅ JÁ IMPLEMENTADA
 
-**Não reimplemente.** `internal/verificacao/` e `mocks/criterios.json` já estão no repositório,
+**Não reimplemente.** `back/verificacao/` e `back/mocks/criterios.json` já estão no repositório,
 com 11 testes passando, `gofmt` e `go vet` limpos. Esta task é só conferir e seguir.
 
-- [ ] **Step 1: Conferir** — `go test ./internal/verificacao/ -v` (11 PASS).
-- [ ] **Step 2: Ler o contrato** — `mocks/README.md` traz o mapeamento das 13 perguntas e os 9 CPFs de teste.
+- [ ] **Step 1: Conferir** — `go test ./back/verificacao/ -v` (11 PASS).
+- [ ] **Step 2: Ler o contrato** — `back/mocks/README.md` traz o mapeamento das 13 perguntas e os 9 CPFs de teste.
 
 **O que ela entrega:**
 
 ```go
-cli := verificacao.NovoDoAmbiente("mocks/criterios.json")
+cli := verificacao.NovoDoAmbiente("back/mocks/criterios.json")
 r, err := cli.Consultar(ctx, cpf)   // erro só se o CPF for inválido
 c := r.PorPergunta()                // map[int]Criterio
 c[28].Valor, c[28].Fonte, c[28].Orgao, c[28].Referencia, c[28].Confianca
@@ -1025,10 +1024,10 @@ positivo, score 89) · `100.000.008-76` sem registro.
 
 ---
 
-### Task 6: CEP — `internal/geo/cep.go`
+### Task 6: CEP — `back/geo/cep.go`
 
 **Files:**
-- Create: `internal/geo/cep.go`, `internal/geo/cep_test.go`
+- Create: `back/geo/cep.go`, `back/geo/cep_test.go`
 
 **Interfaces:**
 - Produces: `type Local struct { Lat, Lon float64; Endereco, Bairro string }`, `type CEP struct { BaseURL string }`, `NovoCEP() *CEP` (BrasilAPI), `(c *CEP) Buscar(ctx, cep string) (*Local, error)`. Devolve `nil, nil` quando não há coordenadas — o frontend então pede clique no mapa.
@@ -1036,7 +1035,7 @@ positivo, score 89) · `100.000.008-76` sem registro.
 - [ ] **Step 1: Teste**
 
 ```go
-// internal/geo/cep_test.go
+// back/geo/cep_test.go
 package geo
 
 import (
@@ -1152,15 +1151,15 @@ func (c *CEP) Buscar(ctx context.Context, cep string) (*Local, error) {
 }
 ```
 
-- [ ] **Step 4: `go test ./internal/geo/ -v` → PASS**
-- [ ] **Step 5: Commit** — `git add internal/geo && git commit -m "feat: geocodificação de CEP com fallback silencioso"`
+- [ ] **Step 4: `go test ./back/geo/ -v` → PASS**
+- [ ] **Step 5: Commit** — `git add back/geo && git commit -m "feat: geocodificação de CEP com fallback silencioso"`
 
 ---
 
-### Task 7: Recomendação — `internal/recomenda/recomenda.go`
+### Task 7: Recomendação — `back/recomenda/recomenda.go`
 
 **Files:**
-- Create: `internal/recomenda/recomenda.go`, `internal/recomenda/recomenda_test.go`
+- Create: `back/recomenda/recomenda.go`, `back/recomenda/recomenda_test.go`
 
 **Interfaces:**
 - Consumes: `modelo.Ref`.
@@ -1175,13 +1174,13 @@ func (c *CEP) Buscar(ctx context.Context, cep string) (*Local, error) {
 - [ ] **Step 1: Teste (só a lógica pura; `Buscar` é validado no smoke da Task 9)**
 
 ```go
-// internal/recomenda/recomenda_test.go
+// back/recomenda/recomenda_test.go
 package recomenda
 
 import (
 	"testing"
 
-	"github.com/antoniomesquita09/impact-lab-34/internal/modelo"
+	"github.com/antoniomesquita09/impact-lab-34/back/modelo"
 )
 
 func ref() *modelo.Ref {
@@ -1248,7 +1247,7 @@ import (
 	"math"
 	"sort"
 
-	"github.com/antoniomesquita09/impact-lab-34/internal/modelo"
+	"github.com/antoniomesquita09/impact-lab-34/back/modelo"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -1365,15 +1364,15 @@ Adicionar no topo o import `"strconv"` e a função:
 func strconvFormat(v float64) string { return strconv.FormatFloat(v, 'f', 8, 64) }
 ```
 
-- [ ] **Step 4: `go test ./internal/recomenda/ -v` → PASS**
-- [ ] **Step 5: Commit** — `git add internal/recomenda && git commit -m "feat: probabilidade auditável e busca geográfica com PostGIS"`
+- [ ] **Step 4: `go test ./back/recomenda/ -v` → PASS**
+- [ ] **Step 5: Commit** — `git add back/recomenda && git commit -m "feat: probabilidade auditável e busca geográfica com PostGIS"`
 
 ---
 
-### Task 8: API — `internal/api/` + `cmd/server`
+### Task 8: API — `back/api/` + `back`
 
 **Files:**
-- Create: `internal/api/router.go`, `internal/api/auth.go`, `internal/api/inscricao.go`, `internal/api/auth_test.go`, `cmd/server/main.go`
+- Create: `back/api/router.go`, `back/api/auth.go`, `back/api/inscricao.go`, `back/api/auth_test.go`, `back/main.go`
 
 **Interfaces:**
 - `type App struct { Pool *pgxpool.Pool; Ref *modelo.Ref; Verificacao *verificacao.Cliente; CEP *geo.CEP; AnoLetivo int }`, `(a *App) Rotas() http.Handler`.
@@ -1391,7 +1390,7 @@ func strconvFormat(v float64) string { return strconv.FormatFloat(v, 'f', 8, 64)
 - [ ] **Step 1: Teste de autenticação (usa o banco real do Supabase; limpa o que cria)**
 
 ```go
-// internal/api/auth_test.go
+// back/api/auth_test.go
 package api
 
 import (
@@ -1403,10 +1402,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/antoniomesquita09/impact-lab-34/internal/db"
-	"github.com/antoniomesquita09/impact-lab-34/internal/modelo"
-	"github.com/antoniomesquita09/impact-lab-34/internal/verificacao"
-	"github.com/antoniomesquita09/impact-lab-34/internal/geo"
+	"github.com/antoniomesquita09/impact-lab-34/back/db"
+	"github.com/antoniomesquita09/impact-lab-34/back/modelo"
+	"github.com/antoniomesquita09/impact-lab-34/back/verificacao"
+	"github.com/antoniomesquita09/impact-lab-34/back/geo"
 )
 
 const cpfTeste = "00000000191"
@@ -1417,9 +1416,9 @@ func appDeTeste(t *testing.T) (*App, func()) {
 	pool, err := db.Abrir(ctx)
 	if err != nil { t.Fatal(err) }
 	ref, err := modelo.Carregar(ctx, pool)
-	if err != nil { t.Fatalf("rode ./cmd/prep antes: %v", err) }
+	if err != nil { t.Fatalf("rode ./pipeline antes: %v", err) }
 	pool.Exec(ctx, `DELETE FROM contas WHERE cpf=$1`, cpfTeste)
-	return &App{Pool: pool, Ref: ref, Verificacao: verificacao.NovoCliente("", "", "../../mocks/criterios.json"), CEP: geo.NovoCEP(), AnoLetivo: 2026},
+	return &App{Pool: pool, Ref: ref, Verificacao: verificacao.NovoCliente("", "", "../../back/mocks/criterios.json"), CEP: geo.NovoCEP(), AnoLetivo: 2026},
 		func() { pool.Exec(ctx, `DELETE FROM contas WHERE cpf=$1`, cpfTeste); pool.Close() }
 }
 
@@ -1474,7 +1473,7 @@ func TestSenhaErradaESemToken(t *testing.T) {
 
 - [ ] **Step 2: Rodar — falha**
 
-- [ ] **Step 3: `internal/api/router.go`**
+- [ ] **Step 3: `back/api/router.go`**
 
 ```go
 package api
@@ -1485,9 +1484,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/antoniomesquita09/impact-lab-34/internal/geo"
-	"github.com/antoniomesquita09/impact-lab-34/internal/modelo"
-	"github.com/antoniomesquita09/impact-lab-34/internal/verificacao"
+	"github.com/antoniomesquita09/impact-lab-34/back/geo"
+	"github.com/antoniomesquita09/impact-lab-34/back/modelo"
+	"github.com/antoniomesquita09/impact-lab-34/back/verificacao"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -1513,6 +1512,7 @@ func lerJSON(r *http.Request, v any) error { return json.NewDecoder(r.Body).Deco
 
 func (a *App) Rotas() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) }) // Render healthCheckPath
 	mux.HandleFunc("POST /api/auth/registrar", a.registrar)
 	mux.HandleFunc("POST /api/auth/entrar", a.entrar)
 	mux.HandleFunc("GET /api/eu", a.autenticado(a.eu))
@@ -1523,7 +1523,7 @@ func (a *App) Rotas() http.Handler {
 	mux.HandleFunc("POST /api/inscricao/opcoes", a.autenticado(a.opcoes))
 	mux.HandleFunc("GET /api/inscricao", a.autenticado(a.estado))
 
-	dist := "web/dist"
+	dist := "front/dist"
 	if _, err := os.Stat(dist); err == nil {
 		fs := http.FileServer(http.Dir(dist))
 		mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1539,7 +1539,7 @@ func (a *App) Rotas() http.Handler {
 }
 ```
 
-- [ ] **Step 4: `internal/api/auth.go`**
+- [ ] **Step 4: `back/api/auth.go`**
 
 ```go
 package api
@@ -1631,7 +1631,7 @@ func (a *App) eu(w http.ResponseWriter, r *http.Request, cpf string) {
 }
 ```
 
-- [ ] **Step 5: `internal/api/inscricao.go`**
+- [ ] **Step 5: `back/api/inscricao.go`**
 
 ```go
 package api
@@ -1642,9 +1642,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/antoniomesquita09/impact-lab-34/internal/modelo"
-	"github.com/antoniomesquita09/impact-lab-34/internal/recomenda"
-	"github.com/antoniomesquita09/impact-lab-34/internal/verificacao"
+	"github.com/antoniomesquita09/impact-lab-34/back/modelo"
+	"github.com/antoniomesquita09/impact-lab-34/back/recomenda"
+	"github.com/antoniomesquita09/impact-lab-34/back/verificacao"
 )
 
 func (a *App) garantirInscricao(r *http.Request, cpf string) {
@@ -1840,7 +1840,7 @@ func (a *App) estado(w http.ResponseWriter, r *http.Request, cpf string) {
 }
 ```
 
-- [ ] **Step 6: `cmd/server/main.go`**
+- [ ] **Step 6: `back/main.go`**
 
 ```go
 package main
@@ -1851,11 +1851,11 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/antoniomesquita09/impact-lab-34/internal/api"
-	"github.com/antoniomesquita09/impact-lab-34/internal/db"
-	"github.com/antoniomesquita09/impact-lab-34/internal/geo"
-	"github.com/antoniomesquita09/impact-lab-34/internal/modelo"
-	"github.com/antoniomesquita09/impact-lab-34/internal/verificacao"
+	"github.com/antoniomesquita09/impact-lab-34/back/api"
+	"github.com/antoniomesquita09/impact-lab-34/back/db"
+	"github.com/antoniomesquita09/impact-lab-34/back/geo"
+	"github.com/antoniomesquita09/impact-lab-34/back/modelo"
+	"github.com/antoniomesquita09/impact-lab-34/back/verificacao"
 )
 
 func main() {
@@ -1865,12 +1865,12 @@ func main() {
 	defer pool.Close()
 
 	ref, err := modelo.Carregar(ctx, pool)
-	if err != nil { log.Fatalf("dados de referência ausentes — rode `go run ./cmd/prep`: %v", err) }
+	if err != nil { log.Fatalf("dados de referência ausentes — rode `go run ./pipeline`: %v", err) }
 	log.Printf("régua com %d perguntas · mediana %.3f", len(ref.Perguntas), ref.Mediana)
 
 	app := &api.App{
 		Pool: pool, Ref: ref,
-		Verificacao: verificacao.NovoDoAmbiente("mocks/criterios.json"),
+		Verificacao: verificacao.NovoDoAmbiente("back/mocks/criterios.json"),
 		CEP:         geo.NovoCEP(),
 		AnoLetivo: 2026,
 	}
@@ -1881,7 +1881,7 @@ func main() {
 }
 ```
 
-- [ ] **Step 7: `go test ./... -v` → PASS** e subir o servidor: `go run ./cmd/server`
+- [ ] **Step 7: `go test ./... -v` → PASS** e subir o servidor: `go run ./back`
 - [ ] **Step 8: Smoke da API**
 
 ```bash
@@ -1893,21 +1893,21 @@ curl -s "localhost:8080/api/inscricao/recomendacoes?raio_km=5" -H "Authorization
 ```
 Esperado: `preparar` traz CadÚnico validado; `respostas` devolve `score` ≥ 53 e `Berçário`; `recomendacoes` traz até 5 creches com `km` e `p_pct`.
 
-- [ ] **Step 9: Commit** — `git add internal/api cmd/server && git commit -m "feat: API da inscrição e servidor"`
+- [ ] **Step 9: Commit** — `git add back/api back && git commit -m "feat: API da inscrição e servidor"`
 
 ---
 
-### Task 9: Frontend — Vite + React + react-map-gl
+### Task 9: Frontend (`front/`) — Vite + React + react-map-gl
 
 **Files:**
-- Create: `web/package.json`, `web/vite.config.js`, `web/index.html`, `web/src/{main.jsx,api.js,App.jsx,styles.css}`, `web/src/pages/{Entrar,Dados,Referencia,Creches,Concluida}.jsx`
+- Create: `front/package.json`, `front/vite.config.js`, `front/index.html`, `front/src/{main.jsx,api.js,App.jsx,styles.css}`, `front/src/pages/{Entrar,Dados,Referencia,Creches,Concluida}.jsx`
 
 Sem testes unitários (tempo). Verificação: `npm run build` limpo + fluxo manual com os 3 CPFs.
 
 - [ ] **Step 1: Scaffold e dependências**
 
 ```bash
-cd web && npm create vite@latest . -- --template react   # aceitar sobrescrever
+cd front && npm create vite@latest . -- --template react   # aceitar sobrescrever
 npm i maplibre-gl react-map-gl react-router-dom
 ```
 
@@ -2275,15 +2275,15 @@ export default function Concluida() {
 
 ```bash
 # terminal 1
-go run ./cmd/server
+go run ./back
 # terminal 2
-cd web && npm run dev
+cd front && npm run dev
 ```
 Percorrer com `100.000.000-19`: CadÚnico e "aguardou fila" já confirmados → responder o resto → CEP `21832-000` (se não vier coordenada, clicar no mapa) → 5 recomendadas com % → escolher 3 → tela final. Repetir com `100.000.002-80`, que **não tem endereço no cadastro** — o mapa abre no Rio inteiro até clicar.
 
 **Se o OpenFreeMap estiver instável**, trocar `MAP_STYLE` em `api.js` por outro provedor ou cair para Leaflet. Testar isso na primeira hora, não às 16h.
 
-- [ ] **Step 9: Build e commit** — `cd web && npm run build && cd .. && git add web && git commit -m "feat: frontend do fluxo de inscrição com MapLibre"`
+- [ ] **Step 9: Build e commit** — `cd front && npm run build && cd .. && git add web && git commit -m "feat: frontend do fluxo de inscrição com MapLibre"`
 
 ---
 
@@ -2292,53 +2292,43 @@ Percorrer com `100.000.000-19`: CadÚnico e "aguardou fila" já confirmados → 
 **Files:**
 - Create: `render.yaml`, `README.md`
 
-- [ ] **Step 1: `render.yaml`**
+- [x] **Step 1: `render.yaml`** — já está na raiz do repositório (`plan: starter`, `healthCheckPath:
+/api/health`, build do `front/` + `go build -o server ./back`). `.env.example` também.
 
-```yaml
-services:
-  - type: web
-    name: matricula-carioca
-    runtime: go
-    plan: free
-    buildCommand: |
-      curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt-get install -y nodejs
-      cd web && npm ci && npm run build && cd ..
-      go build -o server ./cmd/server
-    startCommand: ./server
-    envVars:
-      - key: DATABASE_URL
-        sync: false      # preencher no painel; NUNCA no repositório
-```
+**Decisão de deploy (30/08 ~12h45): tudo no Render, sem Vercel.** O binário Go serve a API e o
+`front/dist`, então há uma origem só — sem CORS, sem cookie cross-domain, um único link para o README.
+Alternativas avaliadas e descartadas para hoje: Fly.io (CLI + cartão), Railway (crédito de trial),
+Cloud Run (projeto GCP + billing; melhor história de escala, mas 30–60 min de setup). Se alguém
+insistir em Vercel para o front, o jeito é `vercel.json` com rewrite de `/api/*` para a URL do
+Render — não mudar o backend por isso.
 
-Se o build de Node no runtime Go der problema, alternativa mais simples: rodar `npm run build` local, commitar `web/dist` (tirando-o do `.gitignore`) e deixar `buildCommand: go build -o server ./cmd/server`.
+**Plano Starter (US$ 7/mês), não Free.** O Free dorme após 15 min sem tráfego e acorda em 30–50 s —
+tela branca na frente da banca. Desligar o serviço depois do evento. Se por algum motivo ficar no
+Free: alguém abre a URL 2 min antes do pitch e deixa uma aba fazendo `fetch('/api/health')` a cada
+5 min.
+
+Se o build de Node no runtime Go der problema, alternativa mais simples: rodar `npm run build` local,
+commitar `front/dist` (tirando-o do `.gitignore`) e deixar `buildCommand: go build -o server ./back`.
 
 - [ ] **Step 2: Publicar**
 
-⚠️ **Confirme o acesso de push ANTES de começar a implementar.** O repositório da equipe é
-`antoniomesquita09/impact-lab-34` — público, mas até 30/08 12:15 ainda **vazio**, e a conta `jpnas`
-**não tinha permissão de push** (`push: false`, `admin: false`). Enquanto isso não sair, dá para
-commitar local mas não empurrar, e a entrega é por link de repositório público.
+Push confirmado em `antoniomesquita09/impact-lab-34` (`push: true` para `jpnas` desde 30/08 12:27).
+**Não criar outro repositório**; se alguém do time não conseguir empurrar, o dono adiciona como
+colaborador.
 
-```bash
-gh api repos/antoniomesquita09/impact-lab-34 --jq '.permissions'   # espere push: true
-```
-
-**Decidido em 30/08 ~12h30: a entrega é `antoniomesquita09/impact-lab-34`, sem plano B de
-repositório próprio.** Se o push falhar por permissão, peça ao dono do repositório para adicionar
-você como colaborador — não crie outro repositório.
-
-Depois: `git push`, conectar no Render, definir `DATABASE_URL` no painel (Environment), aguardar o
-deploy e testar a URL com os CPFs de `mocks/README.md`.
+No Render: *New → Blueprint*, apontar para o repositório (ele lê o `render.yaml`), definir
+`DATABASE_URL` em *Environment*, aguardar o deploy e testar a URL com os CPFs de
+`back/mocks/README.md`. Conferir `https://<app>.onrender.com/api/health` → `ok`.
 
 - [ ] **Step 3: README**
 
-Nesta ordem: **Nome da equipe** · **Membros** · **Resumo** (a tese "a Prefeitura já tem os dados que pede à família"; o que o protótipo faz; os números: opção no próprio bairro confirma 27,2% contra 18,1%; 25,7% de quem tinha direito ao ponto da fila não o declarou; o formulário de 13 perguntas poderia ter 5) · **Arquitetura** (pipeline anual `cmd/prep` → Postgres/PostGIS → API Go → SPA; como o Claude foi usado para construir: análise das bases, calibração, código; **como o Claude atua no produto**: hoje não atua em runtime — o modelo é uma tabela empírica auditável, decisão deliberada para serviço público; próximo passo é assistente de explicação de critérios e apoio à convocação) · **Como rodar** (`schema.sql` no Supabase, `go run ./cmd/prep`, `go run ./cmd/server`) · **Links** (URL do Render; a ilustração *Anatomia da Fila*) · **Vídeo demo** · **O que está pronto e o que não está**: verificação de critérios em mock (`mocks/criterios.json`), com contrato pronto para a API real; distância da calibração por centróide de bairro; base anonimizada, então números relativos e não absolutos; corte de idade 31/03 é premissa a confirmar com a SME · **Próximos passos**: convocação rastreada com o telefone do RMI, painel do gestor, integração com o `matricula.rio`.
+Nesta ordem: **Nome da equipe** · **Membros** · **Resumo** (a tese "a Prefeitura já tem os dados que pede à família"; o que o protótipo faz; os números: opção no próprio bairro confirma 27,2% contra 18,1%; 25,7% de quem tinha direito ao ponto da fila não o declarou; o formulário de 13 perguntas poderia ter 5) · **Arquitetura** (pipeline anual `pipeline` → Postgres/PostGIS → API Go → SPA; como o Claude foi usado para construir: análise das bases, calibração, código; **como o Claude atua no produto**: hoje não atua em runtime — o modelo é uma tabela empírica auditável, decisão deliberada para serviço público; próximo passo é assistente de explicação de critérios e apoio à convocação) · **Como rodar** (`schema.sql` no Supabase, `go run ./pipeline`, `go run ./back`) · **Links** (URL do Render; a ilustração *Anatomia da Fila*) · **Vídeo demo** · **O que está pronto e o que não está**: verificação de critérios em mock (`back/mocks/criterios.json`), com contrato pronto para a API real; distância da calibração por centróide de bairro; base anonimizada, então números relativos e não absolutos; corte de idade 31/03 é premissa a confirmar com a SME · **Próximos passos**: convocação rastreada com o telefone do RMI, painel do gestor, integração com o `matricula.rio`.
 
 - [ ] **Step 4: Vídeo de 60 s** — gravar o fluxo com o CPF da Ana (`100.000.000-19`), subir no YouTube como não listado, link no README. Fazer mesmo com a URL no ar: protege contra queda na hora do pitch.
 
 - [ ] **Step 5: Enviar** — e-mail para `eventos@taicor.ai` com o número do grupo no assunto **e** no corpo, mais o link do repositório. Antes das 16h30; reenviar se houver commit relevante depois (vale a versão mais recente).
 
-- [ ] **Step 6: Commit final** — `git add README.md render.yaml && git commit -m "docs: README de entrega e configuração de deploy" && git push`
+- [ ] **Step 6: Commit final** — `git add README.md && git commit -m "docs: README de entrega e configuração de deploy" && git push`
 
 ---
 
@@ -2352,6 +2342,6 @@ Nesta ordem: **Nome da equipe** · **Membros** · **Resumo** (a tese "a Prefeitu
 1. **OpenFreeMap indisponível** → testar na primeira hora; fallback é trocar o `MAP_STYLE` ou usar Leaflet (~30 min).
 2. **`DATABASE_URL` vazando em commit** → está no `.gitignore` desde a Task 0; se acontecer, rotacionar a senha no Supabase.
 3. **Free tier do Supabase com latência** → o `Ref` é carregado uma vez no boot; só a busca geográfica vai ao banco por request.
-4. **Node no runtime Go do Render** → alternativa documentada na Task 10 Step 1 (commitar `web/dist`).
+4. **Node no runtime Go do Render** → alternativa documentada na Task 10 Step 1 (commitar `front/dist`).
 
 **Ordem de corte se o tempo apertar:** Task 3B (é incremento, não base) → vídeo → página Concluída → camada `todas` no mapa → fallback de ampliação de raio. **Nunca cortar T8 e T9 Creches** — é a demo.

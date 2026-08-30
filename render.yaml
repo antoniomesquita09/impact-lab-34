@@ -1,0 +1,22 @@
+# Deploy único no Render: o binário Go serve a API e o front/dist.
+# Decisão de 30/08: tudo no Render (sem Vercel) — uma origem só, sem CORS nem cookie cross-domain.
+# DATABASE_URL vai no painel (Environment), NUNCA aqui: o repositório é público.
+services:
+  - type: web
+    name: impact-lab-34
+    runtime: go
+    region: virginia            # mesma região do Supabase (East US)
+    plan: starter               # free dorme após 15 min → 30-50 s de cold start no pitch. Starter não dorme.
+    healthCheckPath: /api/health
+    buildCommand: |
+      curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt-get install -y nodejs
+      cd front && npm ci && npm run build && cd ..
+      go build -o server ./back
+    startCommand: ./server
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: VERIFICACAO_BASE_URL
+        sync: false
+      - key: VERIFICACAO_TOKEN
+        sync: false
