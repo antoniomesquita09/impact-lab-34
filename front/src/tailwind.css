@@ -1,0 +1,9 @@
+/* Tailwind v4 sem o preflight.
+   O preflight é um reset global e atropelaria as ~1.600 linhas de styles.css
+   que sustentam as cinco telas. Importando as camadas uma a uma em vez de
+   `@import "tailwindcss"`, ficam o tema e os utilitários e fica de fora o
+   reset. Este arquivo é carregado ANTES do styles.css, então em qualquer
+   empate de especificidade o nosso CSS vence. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
