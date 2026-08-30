@@ -67,6 +67,8 @@ export default function Creches() {
   const [rota, setRota] = useState(null)
   const [buscandoRota, setBuscandoRota] = useState(false)
   const cacheRotas = useRef({})
+  const porCodRef = useRef({})
+  const cartaoNoTrilhoRef = useRef(false)
   const [celular, setCelular] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches,
   )
@@ -148,6 +150,7 @@ export default function Creches() {
     for (const u of [...recomendadas, ...outras]) m[u.cod] = u
     return m
   }, [recomendadas, outras])
+  porCodRef.current = porCod
 
   // Abrir/fechar a sidebar muda a largura do mapa. O MapLibre observa o
   // contêiner, mas a transição da coluna termina depois do reflow — sem este
@@ -183,6 +186,35 @@ export default function Creches() {
       .finally(() => vivo && setBuscandoRota(false))
     return () => { vivo = false }
   }, [codAberto])
+
+  // Ao selecionar, o mapa enquadra a referência e a creche juntas: é o que
+  // torna a distância legível, tanto para quem está com zoom de cidade e clica
+  // numa creche ao lado quanto para quem está no quarteirão e clica numa longe.
+  // Quando a rota chega, reenquadra pela geometria dela — uma rota que dá volta
+  // sai da caixa formada só pelos dois pontos.
+  useEffect(() => {
+    const mapa = mapaRef.current
+    const alvo = codAberto && porCodRef.current[codAberto]
+    if (!mapa || !alvo || !dados?.referencia) return
+
+    const linha = rota?.cod === codAberto ? rota?.rota?.geometria?.coordinates : null
+    const pontos = linha?.length
+      ? linha
+      : [[dados.referencia.lon, dados.referencia.lat], [alvo.lon, alvo.lat]]
+    const lons = pontos.map((p) => p[0])
+    const lats = pontos.map((p) => p[1])
+
+    mapa.fitBounds(
+      [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
+      {
+        // folga assimétrica: o cartão cobre a direita do mapa quando flutua
+        padding: { top: 70, bottom: 70, left: 70, right: cartaoNoTrilhoRef.current ? 70 : 400 },
+        maxZoom: 16, // sem teto, uma creche a 200 m mergulha até a escala do quarteirão
+        duration: 600,
+        essential: true,
+      },
+    )
+  }, [codAberto, rota, dados])
 
   const geoRota = useMemo(() => {
     if (!rota?.de || !rota?.para) return null
@@ -279,6 +311,7 @@ export default function Creches() {
   // cima sem esconder os pinos. Nesse caso o cartão desce para o trilho, como
   // já acontece no celular — o mapa continua sendo o herói da tela.
   const cartaoNoTrilho = celular || escolhidas.length > 0
+  cartaoNoTrilhoRef.current = cartaoNoTrilho
   const escolhida = porCod[codAberto] || recomendadas[0]
   const cartao = escolhida ? (
     <article className={`popup${cartaoNoTrilho ? ' no-trilho' : ''}`}>
