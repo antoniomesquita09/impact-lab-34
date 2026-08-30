@@ -165,9 +165,13 @@ export default function Dados() {
     conteudo = (
       <>
         <div className="titulo">
-          <span className="selo">
-            <Icone nome="check" tamanho={12} largura={3.5} /> Nada disto você precisa responder
-          </span>
+          {/* o selo só faz sentido se houver o que não responder: com o CPF fora
+              dos cadastros a lista vem vazia e a tela se contradiria */}
+          {validadas.length > 0 && (
+            <span className="selo">
+              <Icone nome="check" tamanho={12} largura={3.5} /> Nada disto você precisa responder
+            </span>
+          )}
           <h1>
             {validadas.length > 0
               ? 'A Prefeitura já confirmou o que sabe sobre você'
@@ -176,7 +180,7 @@ export default function Dados() {
           <p className="lede">
             {validadas.length > 0
               ? `Consultamos os cadastros e confirmamos ${validadas.length} ${validadas.length === 1 ? 'critério' : 'critérios'} por você${pontosConfirmados > 0 ? `, que já valem ${pontosConfirmados} pontos` : ''}. Se algo estiver errado, procure o CRAS ou a unidade.`
-              : 'Não encontramos seu CPF nos cadastros da Prefeitura, então precisamos que você responda tudo. São poucas perguntas, uma de cada vez.'}
+              : 'Não encontramos seu CPF nos cadastros da Prefeitura, então desta vez você responde tudo à mão.'}
           </p>
         </div>
 
