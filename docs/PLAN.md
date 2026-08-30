@@ -21,13 +21,15 @@
 - Régua 2025 (`id → pontos`): `28:51, 31:25, 17:4, 20:4, 25:3, 18:3, 6:2, 16:2, 12:2, 23:2, 27:2, 29:0(desempate), 30:0(desempate)`. Soma 100.
 - Probabilidade: `p = clamp(p_base[posicao][faixa] * fator, 0.02, 0.95)`, `fator = clamp(taxa_ref/mediana, 0.5, 1.6)`, `fator = 1.0` se `n_ref < 20`. Faixas de km: `[0,2)`, `[2,5)`, `[5,∞)`. **A pontuação social não entra em `p`** — em 2025 quem pontua e quem não pontua entra na mesma taxa (67,7%). O README diz isso.
 - Interface em português, sentence case, sem jargão de sistema ("verificado pela Prefeitura", nunca "validado via RMI").
+- Verificação de critérios por CPF: usar **`internal/verificacao`** (já implementado). Não criar outro cliente de RMI.
 - Modelos Claude: Sonnet por padrão; Opus só para destravar.
 
 ## Estrutura de arquivos
 
 ```
-matricula-carioca/
+impact-lab-34/
 ├── go.mod  go.sum  .gitignore  .env.example  README.md  render.yaml
+├── mocks/criterios.json + README.md   fixtures da verificação por CPF     ✅ PRONTO
 ├── schema.sql                     DDL completo (roda uma vez no Supabase)
 ├── cmd/
 │   ├── prep/main.go               pipeline anual: brutos → Postgres
@@ -38,7 +40,7 @@ matricula-carioca/
 │   ├── prep/leitura.go            csv.gz e xlsx → structs                 (+ _test)
 │   ├── prep/calibra.go            agrega taxas e matriz 5×3               (+ _test)
 │   ├── prep/grava.go              escreve no Postgres em transação
-│   ├── rmi/rmi.go                 adaptador RMI mock/real + prevalidar    (+ _test)
+│   ├── verificacao/verificacao.go critérios por CPF: mock/API real        (+ _test)  ✅ PRONTO
 │   ├── geo/cep.go                 BrasilAPI (base URL injetável)          (+ _test)
 │   ├── recomenda/recomenda.go     fórmula de probabilidade + ranking      (+ _test)
 │   └── api/
@@ -65,12 +67,12 @@ No painel: novo projeto, região **East US (North Virginia)** (mesma do Render, 
 - [ ] **Step 2: Esqueleto**
 
 ```bash
-mkdir -p matricula-carioca/{cmd/{prep,server},internal/{db,modelo,prep,rmi,geo,recomenda,api},web} && cd matricula-carioca
+mkdir -p impact-lab-34/{cmd/{prep,server},internal/{db,modelo,prep,rmi,geo,recomenda,api},web} && cd matricula-carioca
 git init -b main
 ln -s ../dados dados
 printf 'dados\n.env\nnode_modules/\nweb/dist/\nserver\nprep\n' > .gitignore
-printf 'DATABASE_URL=postgresql://postgres.SEU_REF:SENHA@aws-0-us-east-1.pooler.supabase.com:5432/postgres\n# RMI_BASE_URL=\n# RMI_TOKEN=\n' > .env.example
-go mod init github.com/SEU_USUARIO/matricula-carioca
+printf 'DATABASE_URL=postgresql://postgres.SEU_REF:SENHA@aws-0-us-east-1.pooler.supabase.com:5432/postgres\n# VERIFICACAO_BASE_URL=\n# VERIFICACAO_TOKEN=\n' > .env.example
+go mod init github.com/antoniomesquita09/impact-lab-34
 go get github.com/jackc/pgx/v5/pgxpool github.com/xuri/excelize/v2 golang.org/x/crypto/bcrypt
 ```
 
@@ -188,7 +190,7 @@ func Abrir(ctx context.Context) (*pgxpool.Pool, error) {
 export DATABASE_URL='...'   # nunca commitar
 cat > /tmp/ping.go <<'EOF'
 package main
-import ("context";"fmt";"github.com/SEU_USUARIO/matricula-carioca/internal/db")
+import ("context";"fmt";"github.com/antoniomesquita09/impact-lab-34/internal/db")
 func main(){ p,err:=db.Abrir(context.Background()); if err!=nil{panic(err)}; defer p.Close(); fmt.Println("ok") }
 EOF
 go run /tmp/ping.go   # espera: ok
@@ -696,8 +698,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/SEU_USUARIO/matricula-carioca/internal/db"
-	"github.com/SEU_USUARIO/matricula-carioca/internal/prep"
+	"github.com/antoniomesquita09/impact-lab-34/internal/db"
+	"github.com/antoniomesquita09/impact-lab-34/internal/prep"
 )
 
 func main() {
@@ -772,7 +774,10 @@ da SME, https://educacao.prefeitura.rio/transparenciacreches/, e vive em `dados/
 
 **Armadilhas — todas verificadas:**
 - A aba `MAIO -2025` tem **cabeçalho em duas linhas** (grupamento na primeira, `Meta`/`Aluno`/`Vagas` na segunda). Ler com `GetRows` e montar o mapa de colunas a partir das duas primeiras linhas, propagando o grupamento para a direita.
-- **`zfill(5)` no código das parceiras**, senão a junção devolve zero.
+- **`zfill(5)` no código das parceiras**, senão a junção devolve zero. (Do lado público não precisa: `ChaveUnidade` resolve. Testado sobre as 872 unidades distintas da Query A — **872 chaves distintas, zero colisões**, nenhuma vazia; uma parceira `01004` não colide com nenhuma pública após o `ltrim`.)
+- **Tipos nas células (verificado com openpyxl, célula crua):** nas duas planilhas públicas a `Designação` é **texto com os zeros preservados** — `'0101601'` na capacidade e `'0101001'` no `totaalunoscreche`. Só o `CÓDIGO SGA` das parceiras é **numérico de verdade** (`1004`, int), e é por isso que só ele precisa de `zfill(5)`. Ainda assim, passe as três por `ChaveUnidade`: a camada de leitura (pandas, excelize) converte célula que "parece número" sem avisar, e aí os zeros somem. Normalizar sempre custa nada e evita caçar um problema que não existe no arquivo.
+- Na aba `MAIO -2025`, a **linha 1 é vazia** e o cabeçalho começa na **linha 2** (`CRE`, `CÓDIGO SGA`, `Denominação SGA`, `Grupamentos autorizados`); os dados começam na linha 3.
+- A aba `Consolidado` do `totaalunoscreche2025.xlsx` também tem **cabeçalho de duas linhas**: linha 0 = turno (Integral/Parcial), linha 1 = campo (Aluno/Turma), dados a partir da linha 2. Colunas de Aluno por índice: Berçário 3/5 · Maternal I 7/9 · Maternal II 11/13 (integral/parcial).
 - **18 unidades públicas têm matrícula acima da capacidade** (turmas com exceção autorizada). Calcular ociosidade com **piso em zero**, senão aparecem negativos na tela.
 - **5 parceiras sem linha em maio/2025**: `11010, 06018, 08017, 08022, 05009`. Ficam sem capacidade — não invente número para elas.
 - As três fontes têm **datas diferentes** (capacidade pública 11/07/2025; meta das parceiras maio/2025; matrícula pública é dinâmica). Isso **tem que aparecer na interface**, não ficar escondido: "vagas ociosas conforme a SME em julho/2025".
@@ -782,22 +787,53 @@ da SME, https://educacao.prefeitura.rio/transparenciacreches/, e vive em `dados/
 
 ```sql
 CREATE TABLE IF NOT EXISTS unidade_capacidade (
-  cod          text NOT NULL REFERENCES unidades(cod) ON DELETE CASCADE,
-  grupamento   text NOT NULL,
-  capacidade   int  NOT NULL,
-  matriculados int  NOT NULL,
-  ociosas      int  NOT NULL,      -- greatest(capacidade - matriculados, 0)
-  fonte        text NOT NULL,      -- 'publica' | 'parceira'
-  referencia   text NOT NULL,      -- '2025-07-11' | '2025-05'
-  PRIMARY KEY (cod, grupamento)
+  cod            text NOT NULL REFERENCES unidades(cod) ON DELETE CASCADE,
+  grupamento     text NOT NULL,
+  turno          text NOT NULL,          -- 'Integral' | 'Parcial'
+  capacidade     int  NOT NULL,
+  matriculados   int  NOT NULL,
+  ociosas        int  NOT NULL,          -- greatest(capacidade - matriculados, 0)
+  turno_inferido boolean NOT NULL,       -- false = unidade de turno único (certo)
+  fonte          text NOT NULL,          -- 'publica' | 'parceira'
+  referencia     text NOT NULL,          -- '2025-07-11' | '2025-05'
+  PRIMARY KEY (cod, grupamento, turno)
 );
 ```
+
+**Capacidade por turno — não há fonte oficial, mas 88,4% é determinístico.** A sessão irmã varreu
+a Transparência–Creches, a página de creches parceiras, o data.rio e o Censo/INEP: nenhuma publica
+capacidade por turno. **Considere a busca externa fechada.** Em compensação, a rede é quase toda de
+turno único, e o `totaalunoscreche2025.xlsx` já traz matrícula e turmas por grupamento × turno.
+Classificando as 488 públicas pela matrícula observada (conferido aqui):
+
+| Classe | Unidades | Vagas | % da capacidade |
+|---|---:|---:|---:|
+| Só Integral | 386 | 39.343 | 73,6% |
+| Só Parcial | 62 | 7.895 | 14,8% |
+| **Determinísticas** | **448** | **47.238** | **88,4%** |
+| Mistas (precisam de rateio) | 40 | 6.194 | 11,6% |
+
+Nas 448 de turno único a capacidade inteira vai para aquele turno, com `turno_inferido = false`.
+Só as 40 mistas precisam de rateio, com `turno_inferido = true`.
+
+**Rateie por grupamento, nunca pelo total da unidade** — o share integral cai muito com a idade.
+Entre as 40 mistas: Berçário **77,1%** · Maternal I **63,8%** · Maternal II **43,6%**. Melhor ainda:
+use a proporção da própria unidade naquele grupamento, e caia para esses valores agregados só quando
+a unidade não tiver matrícula no grupamento. (Cuidado: na rede inteira esses shares são 88,0 / 82,0 /
+76,6 — usar os da rede inflaria o integral das mistas.)
+
+Contexto da rede: a matrícula pública é **80,8% integral** (37.956) contra 19,2% parcial (9.019).
+Tratar tudo como integral erraria ~19% da matrícula — não é desprezível, mas é bem menos grave que
+errar a unidade.
+
+Na interface: onde `turno_inferido = false`, o card pode dizer "12 vagas ociosas · integral";
+onde for `true`, mostre o grupamento agregado sem afirmar o turno. Não invente precisão.
 
 - [ ] **Step 2: Leitura** — em `internal/prep/leitura.go`, acrescentar `LerCapacidadePublica(path string) (map[string]map[string]int, error)` (chave externa: `ChaveUnidade`; interna: grupamento → vagas) e `LerParceiras(path string) (map[string]map[string]struct{ Meta, Aluno int }, error)` aplicando `zfill(5)` no `CÓDIGO SGA`. Teste: total público = **53.432**, e `Berçário 10.626 / Maternal I 18.622 / Maternal II 24.184`.
 
 - [ ] **Step 3: Gravação** — `TRUNCATE unidade_capacidade` dentro da mesma transação da Task 3, e `CopyFrom` das linhas, com `ociosas = max(capacidade - matriculados, 0)`.
 
-- [ ] **Step 4: Expor na recomendação** — em `Buscar`, `LEFT JOIN unidade_capacidade c ON c.cod = u.cod AND c.grupamento = $2`, trazendo `coalesce(c.ociosas, -1)`. Em `Sugestao`, campo `VagasOciosas *int \`json:"vagas_ociosas"\`` (nil quando não há dado). Em `Creches.jsx`, quando presente: `<small>{r.vagas_ociosas} vagas ociosas · SME, jul/2025</small>`.
+- [ ] **Step 4: Expor na recomendação** — em `Buscar`, `LEFT JOIN unidade_capacidade c ON c.cod = u.cod AND c.grupamento = $2 AND c.turno = $3`, trazendo `c.ociosas` e `c.turno_inferido`. Em `Sugestao`, campos `VagasOciosas *int` (`json:"vagas_ociosas"`) e `TurnoInferido bool` (`json:"turno_inferido"`) — nil quando não há dado. Em `Creches.jsx`: `{r.vagas_ociosas} vagas ociosas · SME, jul/2025` quando `!turno_inferido`, e sem afirmar o turno quando `turno_inferido`.
 
 - [ ] **Step 5: Commit** — `git commit -am "feat: capacidade e vaga ociosa real por unidade"`
 
@@ -951,296 +987,41 @@ func GrupamentoPorNascimento(nasc time.Time, anoLetivo int) string {
 
 ---
 
-### Task 5: RMI e histórico — `internal/rmi/rmi.go`
+### Task 5: Verificação de critérios por CPF — ✅ JÁ IMPLEMENTADA
 
-**Files:**
-- Create: `internal/rmi/rmi.go`, `internal/rmi/rmi_test.go`
+**Não reimplemente.** `internal/verificacao/` e `mocks/criterios.json` já estão no repositório,
+com 11 testes passando, `gofmt` e `go vet` limpos. Esta task é só conferir e seguir.
 
-**Interfaces:**
-- Produces:
-  - `type Cidadao struct{...}` (subconjunto do schema oficial), `type Contato struct { Endereco, Telefone string; Lat, Lon *float64 }`
-  - `type Prevalidada struct { Valor bool `json:"valor"`; Fonte string `json:"fonte"` }`
-  - `Cliente` com `Obter(ctx, cpf) (*Cidadao, error)` — mock quando `RMI_BASE_URL`/`RMI_TOKEN` vazios.
-  - `Prevalidar(c *Cidadao, h Historico) map[int]Prevalidada`
-  - `ExtrairContato(c *Cidadao) Contato`
-  - `type Historico struct { AguardouFila, IrmaoNaRede bool }` e `ConsultarHistorico(cpf string) Historico`
+- [ ] **Step 1: Conferir** — `go test ./internal/verificacao/ -v` (11 PASS).
+- [ ] **Step 2: Ler o contrato** — `mocks/README.md` traz o mapeamento das 13 perguntas e os 9 CPFs de teste.
 
-CPFs de demonstração: `11111111111` Ana (CadÚnico, Senador Camará, aguardou fila, telefone recente) · `22222222222` Bruno (sem CadÚnico, Botafogo) · `33333333333` Carla (CadÚnico, responsável com deficiência, irmão na rede, **sem endereço no RMI**).
-
-- [ ] **Step 1: Teste**
+**O que ela entrega:**
 
 ```go
-// internal/rmi/rmi_test.go
-package rmi
-
-import (
-	"context"
-	"net/http"
-	"net/http/httptest"
-	"testing"
-)
-
-func TestMockAna(t *testing.T) {
-	c, err := NovoCliente("", "").Obter(context.Background(), "11111111111")
-	if err != nil || c == nil { t.Fatal("Ana deveria existir no mock") }
-	pv := Prevalidar(c, ConsultarHistorico("11111111111"))
-	if !pv[28].Valor || pv[28].Fonte != "CadÚnico (Prefeitura)" { t.Fatalf("CadÚnico: %+v", pv[28]) }
-	if !pv[27].Valor { t.Fatal("Ana aguardou a fila em 2025") }
-	if _, tem := pv[31]; tem { t.Fatal("educação especial não é validável — a família responde") }
-	ct := ExtrairContato(c)
-	if ct.Lat == nil || *ct.Lat > -22.8 { t.Fatalf("coordenada de Senador Camará: %+v", ct.Lat) }
-}
-
-func TestMockBrunoSemCadUnico(t *testing.T) {
-	c, _ := NovoCliente("", "").Obter(context.Background(), "22222222222")
-	pv := Prevalidar(c, ConsultarHistorico("22222222222"))
-	if pv[28].Valor { t.Fatal("Bruno não tem CadÚnico") }
-	if _, tem := pv[28]; !tem { t.Fatal("ausência de CadÚnico ainda é uma validação: valor=false") }
-}
-
-func TestMockCarlaSemEndereco(t *testing.T) {
-	c, _ := NovoCliente("", "").Obter(context.Background(), "33333333333")
-	if ct := ExtrairContato(c); ct.Lat != nil { t.Fatal("Carla não tem endereço no RMI") }
-	pv := Prevalidar(c, ConsultarHistorico("33333333333"))
-	if !pv[29].Valor { t.Fatal("Carla tem irmão na rede") }
-}
-
-func TestCPFDesconhecido(t *testing.T) {
-	c, _ := NovoCliente("", "").Obter(context.Background(), "99999999999")
-	if c != nil { t.Fatal("CPF fora do mock deve devolver nil") }
-	pv := Prevalidar(nil, ConsultarHistorico("99999999999"))
-	if _, tem := pv[28]; tem { t.Fatal("sem cidadão não dá para afirmar CadÚnico") }
-	if pv[27].Valor { t.Fatal("sem histórico, aguardou fila = false") }
-}
-
-func TestClienteRealMandaBearer(t *testing.T) {
-	var auth, path string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		auth, path = r.Header.Get("Authorization"), r.URL.Path
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"cpf":"12345678901","assistencia_social":{"cadunico":{"indicador":true}}}`))
-	}))
-	defer srv.Close()
-	c, err := NovoCliente(srv.URL, "t0k").Obter(context.Background(), "12345678901")
-	if err != nil { t.Fatal(err) }
-	if auth != "Bearer t0k" { t.Fatalf("Authorization = %q", auth) }
-	if path != "/rmi/v1/citizen/12345678901" { t.Fatalf("path = %q", path) }
-	if !c.AssistenciaSocial.CadUnico.Indicador { t.Fatal("CadÚnico deveria vir true") }
-}
+cli := verificacao.NovoDoAmbiente("mocks/criterios.json")
+r, err := cli.Consultar(ctx, cpf)   // erro só se o CPF for inválido
+c := r.PorPergunta()                // map[int]Criterio
+c[28].Valor, c[28].Fonte, c[28].Orgao, c[28].Referencia, c[28].Confianca
+r.Pessoa      // nome, nascimento, menor_idade, endereco (com lat/lon), telefone
+r.Encontrado  // false = CPF válido sem registro; a família responde tudo
+r.NaoVerificaveis // [17,16,12] — sensíveis, nunca vêm verificadas
 ```
 
-- [ ] **Step 2: Rodar — falha**
+**Cobertura da régua:** 64 dos 100 pontos com confiança **alta** (28, 6, 20, 25, 23, 27, 29, 30);
+28 pontos com confiança **média**, que exigem conferência da unidade (31, 18); 8 pontos
+autodeclarados (17, 16, 12) — violência, drogas, familiar preso. Nenhuma base responde esses
+três no lugar da família, e há teste garantindo isso.
 
-- [ ] **Step 3: Implementar**
+**Trocar pelo real:** definir `VERIFICACAO_BASE_URL` e `VERIFICACAO_TOKEN`. O cliente chama
+`GET {base}/v1/criterios/{cpf}` com Bearer; 404 vira `Encontrado: false`, não erro. Só o método
+`daAPI` muda se a API real tiver outro formato.
 
-```go
-// Package rmi conversa com o Registro Municipal Integrado da Prefeitura do Rio.
-// Schema: https://docs.dados.rio/api-reference/citizen/obter-dados-do-cidadão.md
-// Sem RMI_BASE_URL/RMI_TOKEN o cliente responde do mock de demonstração.
-package rmi
-
-import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"strconv"
-	"time"
-)
-
-type CadUnico struct {
-	Indicador             bool   `json:"indicador"`
-	StatusCadastral       string `json:"status_cadastral"`
-	DataUltimaAtualizacao string `json:"data_ultima_atualizacao"`
-}
-type Endereco struct {
-	Logradouro, Numero, Bairro, Cep string
-	Latitude, Longitude             string
-}
-type Cidadao struct {
-	CPF         string `json:"cpf"`
-	Nome        string `json:"nome"`
-	Deficiencia string `json:"deficiencia"`
-	MenorIdade  bool   `json:"menor_idade"`
-	Nascimento  struct {
-		Data string `json:"data"`
-	} `json:"nascimento"`
-	Endereco struct {
-		Indicador  bool `json:"indicador"`
-		Principal  *struct {
-			Logradouro string `json:"logradouro"`
-			Numero     string `json:"numero"`
-			Bairro     string `json:"bairro"`
-			Cep        string `json:"cep"`
-		} `json:"principal"`
-		Alternativo []struct {
-			Bairro    string `json:"bairro"`
-			Cep       string `json:"cep"`
-			Latitude  string `json:"latitude"`
-			Longitude string `json:"longitude"`
-		} `json:"alternativo"`
-	} `json:"endereco"`
-	Telefone struct {
-		Principal *struct {
-			DDD       string `json:"ddd"`
-			Valor     string `json:"valor"`
-			UpdatedAt string `json:"updated_at"`
-		} `json:"principal"`
-	} `json:"telefone"`
-	AssistenciaSocial struct {
-		CadUnico CadUnico `json:"cadunico"`
-		Cras     struct {
-			Nome string `json:"nome"`
-		} `json:"cras"`
-	} `json:"assistencia_social"`
-}
-
-type Cliente struct {
-	baseURL, token string
-	http           *http.Client
-}
-
-func NovoCliente(baseURL, token string) *Cliente {
-	return &Cliente{baseURL: baseURL, token: token, http: &http.Client{Timeout: 10 * time.Second}}
-}
-
-func (c *Cliente) Obter(ctx context.Context, cpf string) (*Cidadao, error) {
-	if c.baseURL == "" || c.token == "" {
-		if cid, ok := mock[cpf]; ok { copia := cid; return &copia, nil }
-		return nil, nil
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		fmt.Sprintf("%s/rmi/v1/citizen/%s", c.baseURL, cpf), nil)
-	if err != nil { return nil, err }
-	req.Header.Set("Authorization", "Bearer "+c.token)
-	resp, err := c.http.Do(req)
-	if err != nil { return nil, err }
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNotFound { return nil, nil }
-	if resp.StatusCode != http.StatusOK { return nil, fmt.Errorf("RMI devolveu %d", resp.StatusCode) }
-	var cid Cidadao
-	if err := json.NewDecoder(resp.Body).Decode(&cid); err != nil { return nil, err }
-	return &cid, nil
-}
-
-type Prevalidada struct {
-	Valor bool   `json:"valor"`
-	Fonte string `json:"fonte"`
-}
-
-type Historico struct{ AguardouFila, IrmaoNaRede bool }
-
-// ConsultarHistorico responde o que a própria SME já sabe. A base do desafio é anonimizada
-// (sem CPF), então aqui é mock; em produção vira uma consulta à base de Inscrição Creche.
-func ConsultarHistorico(cpf string) Historico {
-	switch cpf {
-	case "11111111111":
-		return Historico{AguardouFila: true}
-	case "33333333333":
-		return Historico{IrmaoNaRede: true}
-	}
-	return Historico{}
-}
-
-// Prevalidar só afirma o que uma fonte oficial sustenta. Sem dado, a pergunta fica para a família.
-func Prevalidar(c *Cidadao, h Historico) map[int]Prevalidada {
-	pv := map[int]Prevalidada{
-		27: {Valor: h.AguardouFila, Fonte: "Inscrições anteriores (SME)"},
-		29: {Valor: h.IrmaoNaRede, Fonte: "Matrículas na rede (SME)"},
-	}
-	if c == nil { return pv }
-	pv[28] = Prevalidada{Valor: c.AssistenciaSocial.CadUnico.Indicador, Fonte: "CadÚnico (Prefeitura)"}
-	pv[25] = Prevalidada{Valor: c.Deficiencia != "", Fonte: "Cadastro do responsável"}
-	menor := c.MenorIdade
-	if !menor && c.Nascimento.Data != "" {
-		if nasc, err := time.Parse("2006-01-02", c.Nascimento.Data); err == nil {
-			menor = time.Since(nasc).Hours()/24/365.25 < 18
-		}
-	}
-	pv[30] = Prevalidada{Valor: menor, Fonte: "Cadastro do responsável"}
-	return pv
-}
-
-type Contato struct {
-	Endereco, Telefone, Cep string
-	Lat, Lon                *float64
-}
-
-func ExtrairContato(c *Cidadao) Contato {
-	var ct Contato
-	if c == nil { return ct }
-	if p := c.Endereco.Principal; p != nil {
-		ct.Endereco = fmt.Sprintf("%s, %s — %s", p.Logradouro, p.Numero, p.Bairro)
-		ct.Cep = p.Cep
-	}
-	for _, a := range c.Endereco.Alternativo {
-		lat, e1 := strconv.ParseFloat(a.Latitude, 64)
-		lon, e2 := strconv.ParseFloat(a.Longitude, 64)
-		if e1 == nil && e2 == nil { ct.Lat, ct.Lon = &lat, &lon; break }
-	}
-	if t := c.Telefone.Principal; t != nil { ct.Telefone = "(" + t.DDD + ") " + t.Valor }
-	return ct
-}
-```
-
-E o mock, em `internal/rmi/mock.go`:
-
-```go
-package rmi
-
-var mock = map[string]Cidadao{}
-
-func init() {
-	ana := Cidadao{CPF: "11111111111", Nome: "Ana Lima"}
-	ana.Nascimento.Data = "1996-04-12"
-	ana.Endereco.Indicador = true
-	ana.Endereco.Principal = &struct {
-		Logradouro string `json:"logradouro"`
-		Numero     string `json:"numero"`
-		Bairro     string `json:"bairro"`
-		Cep        string `json:"cep"`
-	}{"Rua Cinco de Julho", "120", "Senador Camará", "21832-000"}
-	ana.Endereco.Alternativo = append(ana.Endereco.Alternativo, struct {
-		Bairro    string `json:"bairro"`
-		Cep       string `json:"cep"`
-		Latitude  string `json:"latitude"`
-		Longitude string `json:"longitude"`
-	}{"Senador Camará", "21832-000", "-22.8830", "-43.5010"})
-	ana.Telefone.Principal = &struct {
-		DDD       string `json:"ddd"`
-		Valor     string `json:"valor"`
-		UpdatedAt string `json:"updated_at"`
-	}{"21", "98765-4321", "2026-07-02"}
-	ana.AssistenciaSocial.CadUnico = CadUnico{Indicador: true, StatusCadastral: "ATUALIZADO", DataUltimaAtualizacao: "2026-03-10"}
-	ana.AssistenciaSocial.Cras.Nome = "CRAS Senador Camará"
-
-	bruno := Cidadao{CPF: "22222222222", Nome: "Bruno Souza"}
-	bruno.Nascimento.Data = "1990-09-30"
-	bruno.Endereco.Indicador = true
-	bruno.Endereco.Principal = &struct {
-		Logradouro string `json:"logradouro"`
-		Numero     string `json:"numero"`
-		Bairro     string `json:"bairro"`
-		Cep        string `json:"cep"`
-	}{"Rua Voluntários da Pátria", "45", "Botafogo", "22250-040"}
-	bruno.Endereco.Alternativo = append(bruno.Endereco.Alternativo, struct {
-		Bairro    string `json:"bairro"`
-		Cep       string `json:"cep"`
-		Latitude  string `json:"latitude"`
-		Longitude string `json:"longitude"`
-	}{"Botafogo", "22250-040", "-22.9520", "-43.1870"})
-	bruno.AssistenciaSocial.CadUnico = CadUnico{Indicador: false}
-
-	carla := Cidadao{CPF: "33333333333", Nome: "Carla Nunes", Deficiencia: "Visual"}
-	carla.Nascimento.Data = "2001-02-20"
-	carla.AssistenciaSocial.CadUnico = CadUnico{Indicador: true, StatusCadastral: "DESATUALIZADO"}
-
-	mock[ana.CPF], mock[bruno.CPF], mock[carla.CPF] = ana, bruno, carla
-}
-```
-
-- [ ] **Step 4: `go test ./internal/rmi/ -v` → PASS**
-- [ ] **Step 5: Commit** — `git add internal/rmi && git commit -m "feat: adaptador RMI (mock/real) e pré-validação de critérios"`
+**CPFs de teste** (todos com dígito verificador válido; sequências repetidas são rejeitadas):
+`100.000.000-19` Ana (score 59, caso principal, mora longe) · `100.000.001-08` Bruno (score 0,
+Botafogo) · `100.000.002-80` Carla (sem endereço no cadastro) · `100.000.003-61` Daniel
+(confiança média) · `100.000.004-42` Elena (refúgio) · `100.000.005-23` Fábio (responsável menor
+de 18) · `100.000.006-04` Iara (Cartão Carioca sem CadÚnico) · `100.000.007-95` João (tudo
+positivo, score 89) · `100.000.008-76` sem registro.
 
 ---
 
@@ -1400,7 +1181,7 @@ package recomenda
 import (
 	"testing"
 
-	"github.com/SEU_USUARIO/matricula-carioca/internal/modelo"
+	"github.com/antoniomesquita09/impact-lab-34/internal/modelo"
 )
 
 func ref() *modelo.Ref {
@@ -1467,7 +1248,7 @@ import (
 	"math"
 	"sort"
 
-	"github.com/SEU_USUARIO/matricula-carioca/internal/modelo"
+	"github.com/antoniomesquita09/impact-lab-34/internal/modelo"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -1595,7 +1376,7 @@ func strconvFormat(v float64) string { return strconv.FormatFloat(v, 'f', 8, 64)
 - Create: `internal/api/router.go`, `internal/api/auth.go`, `internal/api/inscricao.go`, `internal/api/auth_test.go`, `cmd/server/main.go`
 
 **Interfaces:**
-- `type App struct { Pool *pgxpool.Pool; Ref *modelo.Ref; RMI *rmi.Cliente; CEP *geo.CEP; AnoLetivo int }`, `(a *App) Rotas() http.Handler`.
+- `type App struct { Pool *pgxpool.Pool; Ref *modelo.Ref; Verificacao *verificacao.Cliente; CEP *geo.CEP; AnoLetivo int }`, `(a *App) Rotas() http.Handler`.
 - Rotas (todas sob `/api`, JSON; as de inscrição exigem `Authorization: Bearer`):
   - `POST /api/auth/registrar {cpf,nome,nascimento,senha}` → `{token,nome}`
   - `POST /api/auth/entrar {cpf,senha}` → `{token,nome}`
@@ -1622,10 +1403,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/SEU_USUARIO/matricula-carioca/internal/db"
-	"github.com/SEU_USUARIO/matricula-carioca/internal/modelo"
-	"github.com/SEU_USUARIO/matricula-carioca/internal/rmi"
-	"github.com/SEU_USUARIO/matricula-carioca/internal/geo"
+	"github.com/antoniomesquita09/impact-lab-34/internal/db"
+	"github.com/antoniomesquita09/impact-lab-34/internal/modelo"
+	"github.com/antoniomesquita09/impact-lab-34/internal/verificacao"
+	"github.com/antoniomesquita09/impact-lab-34/internal/geo"
 )
 
 const cpfTeste = "00000000191"
@@ -1638,7 +1419,7 @@ func appDeTeste(t *testing.T) (*App, func()) {
 	ref, err := modelo.Carregar(ctx, pool)
 	if err != nil { t.Fatalf("rode ./cmd/prep antes: %v", err) }
 	pool.Exec(ctx, `DELETE FROM contas WHERE cpf=$1`, cpfTeste)
-	return &App{Pool: pool, Ref: ref, RMI: rmi.NovoCliente("", ""), CEP: geo.NovoCEP(), AnoLetivo: 2026},
+	return &App{Pool: pool, Ref: ref, Verificacao: verificacao.NovoCliente("", "", "../../mocks/criterios.json"), CEP: geo.NovoCEP(), AnoLetivo: 2026},
 		func() { pool.Exec(ctx, `DELETE FROM contas WHERE cpf=$1`, cpfTeste); pool.Close() }
 }
 
@@ -1704,17 +1485,17 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/SEU_USUARIO/matricula-carioca/internal/geo"
-	"github.com/SEU_USUARIO/matricula-carioca/internal/modelo"
-	"github.com/SEU_USUARIO/matricula-carioca/internal/rmi"
+	"github.com/antoniomesquita09/impact-lab-34/internal/geo"
+	"github.com/antoniomesquita09/impact-lab-34/internal/modelo"
+	"github.com/antoniomesquita09/impact-lab-34/internal/verificacao"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type App struct {
 	Pool      *pgxpool.Pool
 	Ref       *modelo.Ref
-	RMI       *rmi.Cliente
-	CEP       *geo.CEP
+	Verificacao *verificacao.Cliente
+	CEP         *geo.CEP
 	AnoLetivo int
 }
 
@@ -1861,9 +1642,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/SEU_USUARIO/matricula-carioca/internal/modelo"
-	"github.com/SEU_USUARIO/matricula-carioca/internal/recomenda"
-	"github.com/SEU_USUARIO/matricula-carioca/internal/rmi"
+	"github.com/antoniomesquita09/impact-lab-34/internal/modelo"
+	"github.com/antoniomesquita09/impact-lab-34/internal/recomenda"
+	"github.com/antoniomesquita09/impact-lab-34/internal/verificacao"
 )
 
 func (a *App) garantirInscricao(r *http.Request, cpf string) {
@@ -1872,16 +1653,19 @@ func (a *App) garantirInscricao(r *http.Request, cpf string) {
 
 type perguntaSaida struct {
 	modelo.Pergunta
-	Validada bool   `json:"validada"`
-	Valor    *bool  `json:"valor"`
-	Fonte    string `json:"fonte,omitempty"`
+	Validada   bool   `json:"validada"`
+	Valor      *bool  `json:"valor"`
+	Fonte      string `json:"fonte,omitempty"`
+	Orgao      string `json:"orgao,omitempty"`
+	Referencia string `json:"referencia,omitempty"`
+	Confianca  string `json:"confianca,omitempty"`
 }
 
 func (a *App) preparar(w http.ResponseWriter, r *http.Request, cpf string) {
 	a.garantirInscricao(r, cpf)
-	cid, err := a.RMI.Obter(r.Context(), cpf)
+	res, err := a.Verificacao.Consultar(r.Context(), cpf)
 	if err != nil { erro(w, 502, "Não conseguimos consultar os cadastros agora. Tente de novo."); return }
-	pv := rmi.Prevalidar(cid, rmi.ConsultarHistorico(cpf))
+	pv := res.PorPergunta()
 
 	bruto, _ := json.Marshal(pv)
 	a.Pool.Exec(r.Context(), `UPDATE inscricoes SET prevalidadas=$2, atualizado_em=now() WHERE cpf=$1`, cpf, string(bruto))
@@ -1892,12 +1676,13 @@ func (a *App) preparar(w http.ResponseWriter, r *http.Request, cpf string) {
 		if v, ok := pv[q.ID]; ok {
 			valor := v.Valor
 			ps.Validada, ps.Valor, ps.Fonte = true, &valor, v.Fonte
+			ps.Orgao, ps.Referencia, ps.Confianca = v.Orgao, v.Referencia, string(v.Confianca)
 		}
 		saida = append(saida, ps)
 	}
 	escreverJSON(w, 200, map[string]any{
 		"perguntas":   saida,
-		"contato":     rmi.ExtrairContato(cid),
+		"contato":     res.Pessoa,
 		"grupamentos": []string{"Berçário", "Maternal I", "Maternal II"},
 		"horarios":    []string{"Integral", "Parcial"},
 	})
@@ -1921,7 +1706,7 @@ func (a *App) respostas(w http.ResponseWriter, r *http.Request, cpf string) {
 	// o que a Prefeitura verificou prevalece sobre o que a família marcou
 	var pvJSON string
 	a.Pool.QueryRow(r.Context(), `SELECT prevalidadas::text FROM inscricoes WHERE cpf=$1`, cpf).Scan(&pvJSON)
-	var pv map[string]rmi.Prevalidada
+	var pv map[string]verificacao.Criterio
 	json.Unmarshal([]byte(pvJSON), &pv)
 	for k, v := range pv {
 		if id, err := strconv.Atoi(k); err == nil { final[id] = v.Valor }
@@ -2066,11 +1851,11 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/SEU_USUARIO/matricula-carioca/internal/api"
-	"github.com/SEU_USUARIO/matricula-carioca/internal/db"
-	"github.com/SEU_USUARIO/matricula-carioca/internal/geo"
-	"github.com/SEU_USUARIO/matricula-carioca/internal/modelo"
-	"github.com/SEU_USUARIO/matricula-carioca/internal/rmi"
+	"github.com/antoniomesquita09/impact-lab-34/internal/api"
+	"github.com/antoniomesquita09/impact-lab-34/internal/db"
+	"github.com/antoniomesquita09/impact-lab-34/internal/geo"
+	"github.com/antoniomesquita09/impact-lab-34/internal/modelo"
+	"github.com/antoniomesquita09/impact-lab-34/internal/verificacao"
 )
 
 func main() {
@@ -2085,8 +1870,8 @@ func main() {
 
 	app := &api.App{
 		Pool: pool, Ref: ref,
-		RMI:       rmi.NovoCliente(os.Getenv("RMI_BASE_URL"), os.Getenv("RMI_TOKEN")),
-		CEP:       geo.NovoCEP(),
+		Verificacao: verificacao.NovoDoAmbiente("mocks/criterios.json"),
+		CEP:         geo.NovoCEP(),
 		AnoLetivo: 2026,
 	}
 	porta := os.Getenv("PORT")
@@ -2100,7 +1885,7 @@ func main() {
 - [ ] **Step 8: Smoke da API**
 
 ```bash
-TOK=$(curl -s localhost:8080/api/auth/registrar -d '{"cpf":"11111111111","nome":"Ana","nascimento":"1996-04-12","senha":"x"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
+TOK=$(curl -s localhost:8080/api/auth/registrar -d '{"cpf":"10000000019","nome":"Ana","nascimento":"1996-04-12","senha":"x"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
 curl -s localhost:8080/api/inscricao/preparar -H "Authorization: Bearer $TOK" | head -c 400
 curl -s localhost:8080/api/inscricao/respostas -H "Authorization: Bearer $TOK" -d '{"respostas":{"31":false},"nascimento_crianca":"2025-06-10","horario":"Integral"}'
 curl -s localhost:8080/api/inscricao/referencia -H "Authorization: Bearer $TOK" -d '{"lat":-22.883,"lon":-43.501,"texto":"Casa"}'
@@ -2229,7 +2014,7 @@ export default function Entrar() {
       <button className="link" onClick={() => setModo(modo === 'entrar' ? 'criar' : 'entrar')}>
         {modo === 'entrar' ? 'Ainda não tenho conta' : 'Já tenho conta'}
       </button>
-      <p className="demo">Demonstração: 111.111.111-11 (Ana) · 222.222.222-22 (Bruno) · 333.333.333-33 (Carla). Crie a conta com qualquer senha.</p>
+      <p className="demo">Demonstração: 100.000.000-19 (Ana) · 100.000.001-08 (Bruno) · 100.000.002-80 (Carla). Crie a conta com qualquer senha.</p>
     </main>
   )
 }
@@ -2319,11 +2104,11 @@ export default function Referencia() {
 
   useEffect(() => {
     api('/api/inscricao/preparar').then(d => {
-      const c = d.contato
-      if (c?.Lat != null) {
-        setPonto({ lat: c.Lat, lon: c.Lon, texto: `${c.Endereco} (endereço do seu cadastro)` })
-        setView(v => ({ ...v, latitude: c.Lat, longitude: c.Lon, zoom: 14 }))
-        if (c.Cep) setCep(c.Cep)
+      const e = d.contato?.endereco
+      if (e?.latitude != null) {
+        setPonto({ lat: e.latitude, lon: e.longitude, texto: `${e.logradouro}, ${e.bairro} (endereço do seu cadastro)` })
+        setView(v => ({ ...v, latitude: e.latitude, longitude: e.longitude, zoom: 14 }))
+        if (e.cep) setCep(e.cep)
       }
     }).catch(() => {})
   }, [])
@@ -2494,7 +2279,7 @@ go run ./cmd/server
 # terminal 2
 cd web && npm run dev
 ```
-Percorrer com `111.111.111-11`: CadÚnico e "aguardou fila" já confirmados → responder o resto → CEP `21832-000` (se não vier coordenada, clicar no mapa) → 5 recomendadas com % → escolher 3 → tela final. Repetir com `333.333.333-33`, que **não tem endereço no RMI** — o mapa abre no Rio inteiro até clicar.
+Percorrer com `100.000.000-19`: CadÚnico e "aguardou fila" já confirmados → responder o resto → CEP `21832-000` (se não vier coordenada, clicar no mapa) → 5 recomendadas com % → escolher 3 → tela final. Repetir com `100.000.002-80`, que **não tem endereço no cadastro** — o mapa abre no Rio inteiro até clicar.
 
 **Se o OpenFreeMap estiver instável**, trocar `MAP_STYLE` em `api.js` por outro provedor ou cair para Leaflet. Testar isso na primeira hora, não às 16h.
 
@@ -2529,13 +2314,27 @@ Se o build de Node no runtime Go der problema, alternativa mais simples: rodar `
 
 - [ ] **Step 2: Publicar**
 
-Criar repositório **público** no GitHub, `git push`, conectar no Render, definir `DATABASE_URL` no painel (Environment), aguardar o deploy e testar a URL com os 3 CPFs.
+⚠️ **Confirme o acesso de push ANTES de começar a implementar.** O repositório da equipe é
+`antoniomesquita09/impact-lab-34` — público, mas até 30/08 12:15 ainda **vazio**, e a conta `jpnas`
+**não tinha permissão de push** (`push: false`, `admin: false`). Enquanto isso não sair, dá para
+commitar local mas não empurrar, e a entrega é por link de repositório público.
+
+```bash
+gh api repos/antoniomesquita09/impact-lab-34 --jq '.permissions'   # espere push: true
+```
+
+**Decidido em 30/08 ~12h30: a entrega é `antoniomesquita09/impact-lab-34`, sem plano B de
+repositório próprio.** Se o push falhar por permissão, peça ao dono do repositório para adicionar
+você como colaborador — não crie outro repositório.
+
+Depois: `git push`, conectar no Render, definir `DATABASE_URL` no painel (Environment), aguardar o
+deploy e testar a URL com os CPFs de `mocks/README.md`.
 
 - [ ] **Step 3: README**
 
-Nesta ordem: **Nome da equipe** · **Membros** · **Resumo** (a tese "a Prefeitura já tem os dados que pede à família"; o que o protótipo faz; os números: opção no próprio bairro confirma 27,2% contra 18,1%; 25,7% de quem tinha direito ao ponto da fila não o declarou; o formulário de 13 perguntas poderia ter 5) · **Arquitetura** (pipeline anual `cmd/prep` → Postgres/PostGIS → API Go → SPA; como o Claude foi usado para construir: análise das bases, calibração, código; **como o Claude atua no produto**: hoje não atua em runtime — o modelo é uma tabela empírica auditável, decisão deliberada para serviço público; próximo passo é assistente de explicação de critérios e apoio à convocação) · **Como rodar** (`schema.sql` no Supabase, `go run ./cmd/prep`, `go run ./cmd/server`) · **Links** (URL do Render; a ilustração *Anatomia da Fila*) · **Vídeo demo** · **O que está pronto e o que não está**: RMI em mock com o schema oficial (sem credencial no evento); distância da calibração por centróide de bairro; base anonimizada, então números relativos e não absolutos; corte de idade 31/03 é premissa a confirmar com a SME · **Próximos passos**: convocação rastreada com o telefone do RMI, painel do gestor, integração com o `matricula.rio`.
+Nesta ordem: **Nome da equipe** · **Membros** · **Resumo** (a tese "a Prefeitura já tem os dados que pede à família"; o que o protótipo faz; os números: opção no próprio bairro confirma 27,2% contra 18,1%; 25,7% de quem tinha direito ao ponto da fila não o declarou; o formulário de 13 perguntas poderia ter 5) · **Arquitetura** (pipeline anual `cmd/prep` → Postgres/PostGIS → API Go → SPA; como o Claude foi usado para construir: análise das bases, calibração, código; **como o Claude atua no produto**: hoje não atua em runtime — o modelo é uma tabela empírica auditável, decisão deliberada para serviço público; próximo passo é assistente de explicação de critérios e apoio à convocação) · **Como rodar** (`schema.sql` no Supabase, `go run ./cmd/prep`, `go run ./cmd/server`) · **Links** (URL do Render; a ilustração *Anatomia da Fila*) · **Vídeo demo** · **O que está pronto e o que não está**: verificação de critérios em mock (`mocks/criterios.json`), com contrato pronto para a API real; distância da calibração por centróide de bairro; base anonimizada, então números relativos e não absolutos; corte de idade 31/03 é premissa a confirmar com a SME · **Próximos passos**: convocação rastreada com o telefone do RMI, painel do gestor, integração com o `matricula.rio`.
 
-- [ ] **Step 4: Vídeo de 60 s** — gravar o fluxo com o CPF da Ana, subir no YouTube como não listado, link no README. Fazer mesmo com a URL no ar: protege contra queda na hora do pitch.
+- [ ] **Step 4: Vídeo de 60 s** — gravar o fluxo com o CPF da Ana (`100.000.000-19`), subir no YouTube como não listado, link no README. Fazer mesmo com a URL no ar: protege contra queda na hora do pitch.
 
 - [ ] **Step 5: Enviar** — e-mail para `eventos@taicor.ai` com o número do grupo no assunto **e** no corpo, mais o link do repositório. Antes das 16h30; reenviar se houver commit relevante depois (vale a versão mais recente).
 
@@ -2547,7 +2346,7 @@ Nesta ordem: **Nome da equipe** · **Membros** · **Resumo** (a tese "a Prefeitu
 
 **Cobertura do spec:** login com CPF (T8 auth) · pré-validação RMI + SME (T5, T8 `preparar`) · formulário híbrido com validadas bloqueadas (T9 Dados) · score na hora sem exibir (T8 `respostas`; o front não mostra) · referência por CEP/mapa com sugestão do RMI (T6, T8, T9 Referencia) · mapa + recomendação por proximidade × probabilidade (T7, T9 Creches) · modelo auditável calibrado (T2) · pipeline anual gravando no banco (T1–T3) · README e URL (T10).
 
-**Consistência de tipos:** `prep.Unidade`/`prep.Modelo` são escritos pela T3 e lidos pela T4 via banco (não há acoplamento direto) · `modelo.Ref.PBase` é `[5][3]float64` em T4 e consumido assim em T7 · `rmi.Prevalidada{Valor,Fonte}` é serializado em `inscricoes.prevalidadas` (T8 `preparar`) e desserializado no mesmo formato em `respostas` · `recomenda.Sugestao` expõe `cod,nome,bairro,lat,lon,km,p,p_pct,fator,motivo`, exatamente os campos lidos em Creches.jsx · `ExtrairContato` devolve campos exportados (`Lat`,`Lon`,`Endereco`,`Cep`), que em JSON viram `Lat`/`Lon`/`Endereco`/`Cep` — Referencia.jsx usa `c.Lat`, `c.Cep`.
+**Consistência de tipos:** `prep.Unidade`/`prep.Modelo` são escritos pela T3 e lidos pela T4 via banco (não há acoplamento direto) · `modelo.Ref.PBase` é `[5][3]float64` em T4 e consumido assim em T7 · `verificacao.Criterio{PerguntaID,Valor,Fonte,Orgao,Referencia,Confianca}` é serializado em `inscricoes.prevalidadas` (T8 `preparar`) e desserializado no mesmo formato em `respostas` · `recomenda.Sugestao` expõe `cod,nome,bairro,lat,lon,km,p,p_pct,fator,motivo`, exatamente os campos lidos em Creches.jsx · `verificacao.Pessoa` serializa com tags minúsculas (`nome`, `nascimento`, `endereco.latitude`, `telefone`) — Referencia.jsx usa `contato.endereco?.latitude`, não `c.Lat`.
 
 **Riscos e mitigação:**
 1. **OpenFreeMap indisponível** → testar na primeira hora; fallback é trocar o `MAP_STYLE` ou usar Leaflet (~30 min).
