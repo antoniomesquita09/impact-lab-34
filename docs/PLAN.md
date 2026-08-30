@@ -65,7 +65,7 @@ impact-lab-34/                     um go.mod só na raiz — pipeline/ e back/ c
 No painel: novo projeto, região **East US (North Virginia)** (mesma do Render, menor latência). Guardar a senha do banco. Em *Project Settings → Database → Connection string → URI*, copiar a string do **Session pooler** (porta 5432, compatível com IPv4). Formato:
 `postgresql://postgres.<ref>:<senha>@aws-0-us-east-1.pooler.supabase.com:5432/postgres`
 
-- [ ] **Step 2: Esqueleto**
+- [x] **Step 2: Esqueleto**
 
 ```bash
 # o repositório já existe e está clonado em impact-lab-34/ (go.mod na raiz, back/verificacao pronto)
@@ -75,7 +75,7 @@ ln -s ../dados dados                      # dados/ está no .gitignore
 go get github.com/jackc/pgx/v5/pgxpool github.com/xuri/excelize/v2 golang.org/x/crypto/bcrypt
 ```
 
-- [ ] **Step 3: `schema.sql`**
+- [x] **Step 3: `schema.sql`**
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS postgis;
@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS inscricoes (
 
 Aplicar: colar no **SQL Editor** do Supabase e rodar. Conferir em *Table Editor* que as 8 tabelas existem.
 
-- [ ] **Step 4: `back/db/db.go`**
+- [x] **Step 4: `back/db/db.go`**
 
 ```go
 package db
@@ -852,7 +852,7 @@ onde for `true`, mostre o grupamento agregado sem afirmar o turno. Não invente 
   - `(*Ref) CalcularScore(respostas map[int]bool) int`
   - `GrupamentoPorNascimento(nasc time.Time, anoLetivo int) string` — corte 31/03: <2 anos Berçário, 2 Maternal I, 3+ Maternal II.
 
-- [ ] **Step 1: Teste**
+- [x] **Step 1: Teste**
 
 ```go
 // back/modelo/modelo_test.go
@@ -893,9 +893,9 @@ func TestGrupamento(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Rodar — falha**
+- [x] **Step 2: Rodar — falha**
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 ```go
 // back/modelo/modelo.go
@@ -981,8 +981,8 @@ func GrupamentoPorNascimento(nasc time.Time, anoLetivo int) string {
 }
 ```
 
-- [ ] **Step 4: `go test ./back/modelo/ -v` → PASS**
-- [ ] **Step 5: Commit** — `git add back/modelo && git commit -m "feat: carga da régua e do modelo do banco, score e grupamento"`
+- [x] **Step 4: `go test ./back/modelo/ -v` → PASS**
+- [x] **Step 5: Commit** — `git add back/modelo && git commit -m "feat: carga da régua e do modelo do banco, score e grupamento"`
 
 ---
 
@@ -991,8 +991,8 @@ func GrupamentoPorNascimento(nasc time.Time, anoLetivo int) string {
 **Não reimplemente.** `back/verificacao/` e `back/mocks/criterios.json` já estão no repositório,
 com 11 testes passando, `gofmt` e `go vet` limpos. Esta task é só conferir e seguir.
 
-- [ ] **Step 1: Conferir** — `go test ./back/verificacao/ -v` (11 PASS).
-- [ ] **Step 2: Ler o contrato** — `back/mocks/README.md` traz o mapeamento das 13 perguntas e os 9 CPFs de teste.
+- [x] **Step 1: Conferir** — `go test ./back/verificacao/ -v` (11 PASS).
+- [x] **Step 2: Ler o contrato** — `back/mocks/README.md` traz o mapeamento das 13 perguntas e os 9 CPFs de teste.
 
 **O que ela entrega:**
 
@@ -1032,7 +1032,7 @@ positivo, score 89) · `100.000.008-76` sem registro.
 **Interfaces:**
 - Produces: `type Local struct { Lat, Lon float64; Endereco, Bairro string }`, `type CEP struct { BaseURL string }`, `NovoCEP() *CEP` (BrasilAPI), `(c *CEP) Buscar(ctx, cep string) (*Local, error)`. Devolve `nil, nil` quando não há coordenadas — o frontend então pede clique no mapa.
 
-- [ ] **Step 1: Teste**
+- [x] **Step 1: Teste**
 
 ```go
 // back/geo/cep_test.go
@@ -1082,9 +1082,9 @@ func TestCEPNaoEncontrado(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Rodar — falha**
+- [x] **Step 2: Rodar — falha**
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 ```go
 package geo
@@ -1151,8 +1151,8 @@ func (c *CEP) Buscar(ctx context.Context, cep string) (*Local, error) {
 }
 ```
 
-- [ ] **Step 4: `go test ./back/geo/ -v` → PASS**
-- [ ] **Step 5: Commit** — `git add back/geo && git commit -m "feat: geocodificação de CEP com fallback silencioso"`
+- [x] **Step 4: `go test ./back/geo/ -v` → PASS**
+- [x] **Step 5: Commit** — `git add back/geo && git commit -m "feat: geocodificação de CEP com fallback silencioso"`
 
 ---
 
@@ -1171,7 +1171,7 @@ func (c *CEP) Buscar(ctx context.Context, cep string) (*Local, error) {
   - `Ranquear(ref *modelo.Ref, cands []Candidata, top int) []Sugestao` — ordena por `P` desc, empate por `Km` asc.
   - `Buscar(ctx, pool, lat, lon float64, grupamento, horario string, raioKm float64) ([]Candidata, error)` — `ST_DWithin` no PostGIS.
 
-- [ ] **Step 1: Teste (só a lógica pura; `Buscar` é validado no smoke da Task 9)**
+- [x] **Step 1: Teste (só a lógica pura; `Buscar` é validado no smoke da Task 9)**
 
 ```go
 // back/recomenda/recomenda_test.go
@@ -1235,9 +1235,9 @@ func TestRanquearRespeitaTop(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Rodar — falha**
+- [x] **Step 2: Rodar — falha**
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 ```go
 package recomenda
@@ -1364,8 +1364,8 @@ Adicionar no topo o import `"strconv"` e a função:
 func strconvFormat(v float64) string { return strconv.FormatFloat(v, 'f', 8, 64) }
 ```
 
-- [ ] **Step 4: `go test ./back/recomenda/ -v` → PASS**
-- [ ] **Step 5: Commit** — `git add back/recomenda && git commit -m "feat: probabilidade auditável e busca geográfica com PostGIS"`
+- [x] **Step 4: `go test ./back/recomenda/ -v` → PASS**
+- [x] **Step 5: Commit** — `git add back/recomenda && git commit -m "feat: probabilidade auditável e busca geográfica com PostGIS"`
 
 ---
 
@@ -1387,7 +1387,7 @@ func strconvFormat(v float64) string { return strconv.FormatFloat(v, 'f', 8, 64)
   - `POST /api/inscricao/opcoes {unidades:[...]}` → `{ok,opcoes}`
   - `GET  /api/inscricao` → estado atual
 
-- [ ] **Step 1: Teste de autenticação (usa o banco real do Supabase; limpa o que cria)**
+- [x] **Step 1: Teste de autenticação (usa o banco real do Supabase; limpa o que cria)**
 
 ```go
 // back/api/auth_test.go
@@ -1471,9 +1471,9 @@ func TestSenhaErradaESemToken(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Rodar — falha**
+- [x] **Step 2: Rodar — falha**
 
-- [ ] **Step 3: `back/api/router.go`**
+- [x] **Step 3: `back/api/router.go`**
 
 ```go
 package api
@@ -1539,7 +1539,7 @@ func (a *App) Rotas() http.Handler {
 }
 ```
 
-- [ ] **Step 4: `back/api/auth.go`**
+- [x] **Step 4: `back/api/auth.go`**
 
 ```go
 package api
@@ -1631,7 +1631,7 @@ func (a *App) eu(w http.ResponseWriter, r *http.Request, cpf string) {
 }
 ```
 
-- [ ] **Step 5: `back/api/inscricao.go`**
+- [x] **Step 5: `back/api/inscricao.go`**
 
 ```go
 package api
@@ -1840,7 +1840,7 @@ func (a *App) estado(w http.ResponseWriter, r *http.Request, cpf string) {
 }
 ```
 
-- [ ] **Step 6: `back/main.go`**
+- [x] **Step 6: `back/main.go`**
 
 ```go
 package main
@@ -1893,7 +1893,7 @@ curl -s "localhost:8080/api/inscricao/recomendacoes?raio_km=5" -H "Authorization
 ```
 Esperado: `preparar` traz CadÚnico validado; `respostas` devolve `score` ≥ 53 e `Berçário`; `recomendacoes` traz até 5 creches com `km` e `p_pct`.
 
-- [ ] **Step 9: Commit** — `git add back/api back && git commit -m "feat: API da inscrição e servidor"`
+- [x] **Step 9: Commit** — `git add back/api back && git commit -m "feat: API da inscrição e servidor"`
 
 ---
 
