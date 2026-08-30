@@ -8,13 +8,16 @@ import { km as fmtKm, ROTULO } from './faixa'
  * A ordem é a informação: na base de 2021–2025 a 1ª opção entra mais de seis
  * vezes mais que a 5ª. Por isso o número vem grande e a lista é reordenável.
  *
- * Sobre a faixa de chance: o `p_pct` que a API devolve hoje é sempre calculado
- * na posição 1 (`Ranquear` chama `Probabilidade(..., 1)`), então ele NÃO vale
- * para a 3ª ou a 5ª posição. Enquanto a API não mandar `p_por_posicao`, esta
- * lista mostra ordem e distância e não repete a faixa — melhor não dizer do
- * que dizer errado. Quando o campo chegar, `faixaNaPosicao` passa a existir.
+ * Sobre a chance: a FAIXA aqui é a mesma da lista da esquerda — a chance
+ * própria da creche — e não muda quando a pessoa reordena. Uma creche "Alta" é
+ * "Alta" nos dois lugares, sempre; duas metades da tela discordando sobre a
+ * mesma unidade seria defeito, não informação.
+ *
+ * O efeito da posição continua visível, mas como número explícito ao lado da
+ * ordem ("2ª opção · 37% nesta posição"). Um número não compete com a faixa;
+ * outro rótulo qualitativo competiria.
  */
-export default function MinhasOpcoes({ itens, aoMover, aoRemover, faixaNaPosicao }) {
+export default function MinhasOpcoes({ itens, aoMover, aoRemover, pctNaPosicao }) {
   const [arrastando, setArrastando] = useState(null)
   const [alvo, setAlvo] = useState(null)
 
@@ -39,7 +42,7 @@ export default function MinhasOpcoes({ itens, aoMover, aoRemover, faixaNaPosicao
 
       <ol className="opcoes-lista">
         {itens.map((c, i) => {
-          const faixa = faixaNaPosicao ? faixaNaPosicao(c, i) : null
+          const pct = pctNaPosicao ? pctNaPosicao(c, i) : null
           return (
             <li
               key={c.cod}
@@ -55,16 +58,18 @@ export default function MinhasOpcoes({ itens, aoMover, aoRemover, faixaNaPosicao
 
               <span className="corpo">
                 <span className="nome">{c.nome}</span>
-                <span className="meta">
-                  {i === 0 ? '1ª opção · ' : `${i + 1}ª opção · `}
-                  {c.bairro} · {fmtKm(c.km)}
+                <span className="meta">{c.bairro} · {fmtKm(c.km)}</span>
+                <span className="linha-chance">
+                  {c.faixa && (
+                    <>
+                      <Medidor faixa={c.faixa} />
+                      <b className={c.faixa}>{ROTULO[c.faixa]}</b>
+                    </>
+                  )}
+                  {pct != null && (
+                    <span className="pos">{i + 1}ª opção · <b>{pct}%</b> nesta posição</span>
+                  )}
                 </span>
-                {faixa && (
-                  <span className="faixa-pos">
-                    <Medidor faixa={faixa} />
-                    <b className={faixa}>{ROTULO[faixa]}</b> nesta posição
-                  </span>
-                )}
               </span>
 
               {/* setas: cobrem toque, teclado e leitor de tela pelo mesmo caminho */}

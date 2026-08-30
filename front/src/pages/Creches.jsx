@@ -166,13 +166,11 @@ export default function Creches() {
   // os dados completos das escolhidas, na ordem que a família definiu
   const escolhidas = sel.map((cod) => porCod[cod]).filter(Boolean)
 
-  // A API devolve `p_pct` sempre na posição 1. Só dá para mostrar a faixa por
-  // posição quando ela mandar `p_por_posicao`; até lá, a sidebar não exibe faixa.
-  const faixaNaPosicao = dados.recomendadas.some((r) => Array.isArray(r.p_por_posicao))
-    ? (c, i) => {
-        const p = c.p_por_posicao?.[Math.min(i, 4)]
-        return p == null ? null : deFaixa({ p_pct: p })
-      }
+  // A chance na posição escolhida, como NÚMERO. A faixa da creche não muda com
+  // a ordem — ela é a mesma da lista da esquerda; o que a ordem muda é este
+  // percentual, que aparece ao lado dela sem contradizê-la.
+  const pctNaPosicao = dados.recomendadas.some((r) => Array.isArray(r.p_por_posicao))
+    ? (c, i) => c.p_por_posicao?.[Math.min(i, 4)] ?? null
     : null
 
   async function concluir() {
@@ -452,7 +450,7 @@ export default function Creches() {
           itens={escolhidas}
           aoMover={mover}
           aoRemover={remover}
-          faixaNaPosicao={faixaNaPosicao}
+          pctNaPosicao={pctNaPosicao}
         />
       </div>
     </div>
