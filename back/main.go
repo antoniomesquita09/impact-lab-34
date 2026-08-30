@@ -37,6 +37,7 @@ func main() {
 		Ref:         ref,
 		Verificacao: verif,
 		CEP:         geo.NovoCEP(),
+		Roteador:    geo.NovoRoteador(),
 		AnoLetivo:   2026,
 	}
 	porta := os.Getenv("PORT")

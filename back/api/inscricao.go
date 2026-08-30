@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -266,6 +267,52 @@ func (a *App) opcoes(w http.ResponseWriter, r *http.Request, cpf string) {
 		return
 	}
 	escreverJSON(w, 200, map[string]any{"ok": true, "opcoes": in.Unidades})
+}
+
+// rota devolve o caminho pela via entre a referência da família e uma unidade,
+// para o mapa desenhar o traçado. Devolve também km_linha_reta: é ESSA a
+// distância que alimenta o modelo, porque a matriz de probabilidade foi
+// calibrada em linha reta. Mostrar as duas lado a lado é o honesto — a rota é
+// o que a família percorre, a linha reta é o que o modelo viu.
+func (a *App) rota(w http.ResponseWriter, r *http.Request, cpf string) {
+	cod := r.URL.Query().Get("cod")
+	if cod == "" {
+		erro(w, 400, "Informe a creche.")
+		return
+	}
+	modo := r.URL.Query().Get("modo")
+
+	var deLat, deLon *float64
+	if err := a.Pool.QueryRow(r.Context(),
+		`SELECT ST_Y(ref::geometry), ST_X(ref::geometry) FROM inscricoes WHERE cpf=$1`,
+		cpf).Scan(&deLat, &deLon); err != nil || deLat == nil || deLon == nil {
+		erro(w, 400, "Informe o local de referência primeiro.")
+		return
+	}
+
+	var nome string
+	var paraLat, paraLon, reta float64
+	ponto := "SRID=4326;POINT(" + strconv.FormatFloat(*deLon, 'f', 8, 64) + " " +
+		strconv.FormatFloat(*deLat, 'f', 8, 64) + ")"
+	if err := a.Pool.QueryRow(r.Context(),
+		`SELECT nome, ST_Y(geom::geometry), ST_X(geom::geometry),
+		        ST_Distance(geom, $2::geography)/1000.0
+		 FROM unidades WHERE cod=$1`, cod, ponto).Scan(&nome, &paraLat, &paraLon, &reta); err != nil {
+		erro(w, 404, "Creche não encontrada.")
+		return
+	}
+
+	saida := map[string]any{
+		"cod": cod, "nome": nome,
+		"de":            map[string]float64{"lat": *deLat, "lon": *deLon},
+		"para":          map[string]float64{"lat": paraLat, "lon": paraLon},
+		"km_linha_reta": math.Round(reta*100) / 100,
+		"rota":          nil,
+	}
+	if rt, _ := a.Roteador.Rotear(r.Context(), *deLat, *deLon, paraLat, paraLon, modo); rt != nil {
+		saida["rota"] = rt
+	}
+	escreverJSON(w, 200, saida)
 }
 
 // estado devolve a inscrição inteira e coesa: as respostas que geraram o score,

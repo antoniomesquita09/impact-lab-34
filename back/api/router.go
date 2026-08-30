@@ -18,6 +18,7 @@ type App struct {
 	Ref         *modelo.Ref
 	Verificacao *verificacao.Cliente
 	CEP         *geo.CEP
+	Roteador    *geo.Roteador
 	AnoLetivo   int
 }
 
@@ -46,6 +47,7 @@ func (a *App) Rotas() http.Handler {
 	mux.HandleFunc("POST /api/inscricao/referencia", a.autenticado(a.referencia))
 	mux.HandleFunc("GET /api/inscricao/recomendacoes", a.autenticado(a.recomendacoes))
 	mux.HandleFunc("POST /api/inscricao/opcoes", a.autenticado(a.opcoes))
+	mux.HandleFunc("GET /api/inscricao/rota", a.autenticado(a.rota))
 	mux.HandleFunc("GET /api/inscricao", a.autenticado(a.estado))
 
 	dist := "front/dist"

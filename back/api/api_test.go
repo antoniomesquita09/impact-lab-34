@@ -33,7 +33,7 @@ func appDeTeste(t *testing.T) (*App, func()) {
 	pool.Exec(ctx, `DELETE FROM contas WHERE cpf=$1`, cpfTeste)
 	return &App{Pool: pool, Ref: ref,
 			Verificacao: verificacao.NovoCliente("", "", "../mocks/criterios.json"),
-			CEP:         geo.NovoCEP(), AnoLetivo: 2026},
+			CEP:         geo.NovoCEP(), Roteador: geo.NovoRoteador(), AnoLetivo: 2026},
 		func() { pool.Exec(ctx, `DELETE FROM contas WHERE cpf=$1`, cpfTeste); pool.Close() }
 }
 
