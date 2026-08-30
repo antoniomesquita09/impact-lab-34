@@ -344,7 +344,7 @@ input, select { font: inherit; color: inherit; }
 }
 .popup h3 { font-size: 16px; font-weight: 600; letter-spacing: -.015em; line-height: 1.2; }
 .popup .sub { font-size: 12.5px; color: var(--ink-2); margin-top: 3px; }
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; margin: 0; }
+.stats { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; margin: 0; }
 .stats > div { padding: 9px 10px; display: flex; flex-direction: column; gap: 2px; }
 .stats > div + div { border-left: 1px solid var(--line-2); }
 .stats dt { font-family: var(--display); font-size: 9.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
@@ -905,3 +905,13 @@ input, select { font: inherit; color: inherit; }
   border-radius: var(--r-md); padding: 8px 11px; line-height: 1.4;
 }
 .popup .via b { color: var(--ink); font-family: var(--display); font-weight: 700; }
+
+/* ---------- wizard: as três faixas com a mesma largura ----------
+   Título e rodapé ocupavam ~720px e os cartões só 520, ancorados à esquerda:
+   cada bloco terminava num lugar diferente e o "Próxima", sozinho na ponta,
+   fazia a coluna parecer torta mesmo estando centrada. */
+.pagina.wz .escolhas,
+.wz .escolhas {
+  max-width: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
