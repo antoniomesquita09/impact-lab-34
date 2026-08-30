@@ -10,6 +10,40 @@ import { distanciaKm, normalizar } from '../geo'
 import MinhasOpcoes from '../MinhasOpcoes'
 import EditarRespostas from '../EditarRespostas'
 
+// O traçado é desenhado progressivamente, da referência até a creche: ver a
+// linha nascer na porta de casa e caminhar até a unidade responde "quão longe
+// isso é de mim" melhor do que uma linha que já aparece pronta.
+// `recortar` devolve o pedaço da rota até a fração `t` do comprimento total,
+// interpolando dentro do segmento em que a fração cai — sem isso a linha
+// avançaria aos saltos, de vértice em vértice.
+function recortar(coords, t) {
+  if (t >= 1 || coords.length < 2) return coords
+  const passos = []
+  let total = 0
+  for (let i = 1; i < coords.length; i++) {
+    const d = Math.hypot(coords[i][0] - coords[i - 1][0], coords[i][1] - coords[i - 1][1])
+    passos.push(d)
+    total += d
+  }
+  if (!total) return coords
+  const alvo = total * t
+  const saida = [coords[0]]
+  let andado = 0
+  for (let i = 0; i < passos.length; i++) {
+    if (andado + passos[i] >= alvo) {
+      const f = passos[i] ? (alvo - andado) / passos[i] : 0
+      saida.push([
+        coords[i][0] + (coords[i + 1][0] - coords[i][0]) * f,
+        coords[i][1] + (coords[i + 1][1] - coords[i][1]) * f,
+      ])
+      break
+    }
+    andado += passos[i]
+    saida.push(coords[i + 1])
+  }
+  return saida
+}
+
 // as 852 unidades numa passada de WebGL; só as recomendadas viram Marker.
 // São três camadas sobre a mesma fonte: o desenho, o realce (escolhida ou sob o
 // mouse) e um alvo transparente bem maior — 3 px é impossível de acertar no
@@ -221,17 +255,47 @@ export default function Creches() {
   const geoRota = useMemo(() => {
     if (!rota?.de || !rota?.para) return null
     const linha = rota.rota?.geometria
-    return {
-      real: !!linha,
-      dados: {
-        type: 'Feature',
-        geometry: linha || {
-          type: 'LineString',
-          coordinates: [[rota.de.lon, rota.de.lat], [rota.para.lon, rota.para.lat]],
-        },
-      },
-    }
+    const coords = linha?.coordinates || [[rota.de.lon, rota.de.lat], [rota.para.lon, rota.para.lat]]
+    // o OSRM devolve na ordem pedida (referência → creche), mas o desenho
+    // depende disso, então conferimos em vez de confiar
+    const inicio = coords[0]
+    const invertido =
+      Math.hypot(inicio[0] - rota.de.lon, inicio[1] - rota.de.lat) >
+      Math.hypot(inicio[0] - rota.para.lon, inicio[1] - rota.para.lat)
+    return { real: !!linha, coords: invertido ? [...coords].reverse() : coords }
   }, [rota])
+
+  // avanço do traçado, de 0 a 1. Zera a cada rota nova e corre em rAF; com
+  // movimento reduzido o desenho aparece inteiro, sem animação.
+  const [avanco, setAvanco] = useState(1)
+  useEffect(() => {
+    if (!geoRota) return
+    const semMovimento =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (semMovimento) { setAvanco(1); return }
+
+    setAvanco(0)
+    let quadro
+    // rotas longas levam um pouco mais: o tempo comunica a distância
+    const ms = Math.min(1600, 650 + geoRota.coords.length * 3)
+    const inicio = performance.now()
+    const passo = (agora) => {
+      const t = Math.min(1, (agora - inicio) / ms)
+      setAvanco(1 - Math.pow(1 - t, 3)) // ease-out: sai rápido e encosta suave
+      if (t < 1) quadro = requestAnimationFrame(passo)
+    }
+    quadro = requestAnimationFrame(passo)
+    return () => cancelAnimationFrame(quadro)
+  }, [geoRota])
+
+  const geoRotaDados = useMemo(() => {
+    if (!geoRota) return null
+    return {
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: recortar(geoRota.coords, avanco) },
+    }
+  }, [geoRota, avanco])
 
   const geojson = useMemo(() => {
     if (!dados) return null
@@ -309,10 +373,11 @@ export default function Creches() {
     }
   }
 
-  // Com a sidebar aberta o mapa fica estreito demais para carregar o cartão por
-  // cima sem esconder os pinos. Nesse caso o cartão desce para o trilho, como
-  // já acontece no celular — o mapa continua sendo o herói da tela.
-  const cartaoNoTrilho = celular || escolhidas.length > 0
+  // O cartão da creche vive flutuando no canto superior direito do mapa, e
+  // continua lá depois da primeira escolha: mudar de lugar no meio da tarefa
+  // faz a pessoa procurar de novo o que já sabia onde estava. Só no celular ele
+  // desce para o trilho, onde não há mapa largo o bastante para sobrepor.
+  const cartaoNoTrilho = celular
   cartaoNoTrilhoRef.current = cartaoNoTrilho
   const escolhida = porCod[codAberto] || recomendadas[0]
   const cartao = escolhida ? (
@@ -521,18 +586,6 @@ export default function Creches() {
             </span>
           </p>
 
-          <Erro>{erro}</Erro>
-
-          <div className="confirm">
-            <div className="count">
-              <b>{sel.length} de 5 opções</b>
-              escolhidas na ordem de preferência
-            </div>
-            <button className="cta" disabled={!sel.length || enviando} onClick={concluir}>
-              {enviando ? 'Enviando…' : 'Confirmar inscrição'}
-              <Icone nome="seta" largura={2.4} />
-            </button>
-          </div>
         </div>
 
         <div className="mapa">
@@ -566,8 +619,8 @@ export default function Creches() {
               </Source>
             )}
 
-            {geoRota && (
-              <Source id="rota-src" type="geojson" data={geoRota.dados}>
+            {geoRotaDados && (
+              <Source id="rota-src" type="geojson" data={geoRotaDados}>
                 <Layer id="rota-base" type="line"
                   layout={{ 'line-cap': 'round', 'line-join': 'round' }}
                   paint={{ 'line-color': '#FFFFFF', 'line-width': 8, 'line-opacity': 0.9 }} />
@@ -644,6 +697,9 @@ export default function Creches() {
           aoRemover={remover}
           pctNaPosicao={pctNaPosicao}
           motivoSemChance={rotuloSemChance}
+          erro={erro}
+          enviando={enviando}
+          aoConcluir={concluir}
         />
       </div>
     </div>

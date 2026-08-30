@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react'
-import { Faixa, Icone } from './componentes'
+import { Erro, Faixa, Icone } from './componentes'
 import { km as fmtKm } from './faixa'
 
 /**
@@ -17,7 +17,9 @@ import { km as fmtKm } from './faixa'
  * ordem ("2ª opção · 37% nesta posição"). Um número não compete com a faixa;
  * outro rótulo qualitativo competiria.
  */
-export default function MinhasOpcoes({ itens, aoMover, aoRemover, pctNaPosicao, motivoSemChance }) {
+export default function MinhasOpcoes({
+  itens, aoMover, aoRemover, pctNaPosicao, motivoSemChance, erro, enviando, aoConcluir,
+}) {
   const [arrastando, setArrastando] = useState(null)
   // `slot` é o ESPAÇO entre cards onde o card cai (0 = antes do primeiro,
   // itens.length = depois do último). Soltar em cima de um card não troca
@@ -49,7 +51,6 @@ export default function MinhasOpcoes({ itens, aoMover, aoRemover, pctNaPosicao, 
     <aside className="opcoes" aria-label="Minhas opções, na ordem de preferência">
       <div className="opcoes-topo">
         <h2>Minhas opções</h2>
-        <span className="conta">{itens.length} de 5</span>
       </div>
       <p className="opcoes-ajuda">
         A ordem conta muito: nos últimos cinco processos, a <b>1ª opção</b> entrou mais de seis
@@ -117,12 +118,20 @@ export default function MinhasOpcoes({ itens, aoMover, aoRemover, pctNaPosicao, 
         })}
       </ol>
 
-      {itens.length < 5 && (
-        <p className="opcoes-ajuda leve">
-          <Icone nome="info" tamanho={13} />
-          Você pode escolher até {5 - itens.length} creche{5 - itens.length > 1 ? 's' : ''} a mais.
-        </p>
-      )}
+      {/* confirmar é o fim desta coluna, não do trilho: a decisão que o botão
+          fecha é a lista que está logo acima dele. */}
+      <Erro>{erro}</Erro>
+
+      <div className="confirm">
+        <div className="count">
+          <b>{itens.length} de 5 opções</b>
+          escolhidas na ordem de preferência
+        </div>
+        <button className="cta" disabled={!itens.length || enviando} onClick={aoConcluir}>
+          {enviando ? 'Enviando…' : 'Confirmar inscrição'}
+          <Icone nome="seta" largura={2.4} />
+        </button>
+      </div>
     </aside>
   )
 }
