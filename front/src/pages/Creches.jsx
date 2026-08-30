@@ -8,6 +8,7 @@ import { deFaixa, km as fmtKm, ROTULO } from '../faixa'
 import { nomeUnidade } from '../texto'
 import { distanciaKm, normalizar } from '../geo'
 import MinhasOpcoes from '../MinhasOpcoes'
+import EditarRespostas from '../EditarRespostas'
 
 // as 852 unidades numa passada de WebGL; só as recomendadas viram Marker.
 // São três camadas sobre a mesma fonte: o desenho, o realce (escolhida ou sob o
@@ -61,6 +62,7 @@ export default function Creches() {
   const [view, setView] = useState(null)
   const mapaRef = useRef(null)
   const [sobre, setSobre] = useState(null) // unidade sob o cursor, para realce e rótulo
+  const [editando, setEditando] = useState(false)
   const [celular, setCelular] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches,
   )
@@ -330,6 +332,11 @@ export default function Creches() {
             </p>
           </div>
 
+          <button type="button" className="editar-respostas" onClick={() => setEditando(true)}>
+            <Icone nome="info" tamanho={13} />
+            Editar minhas respostas
+          </button>
+
           <label className="search">
             <Icone nome="busca" tamanho={16} />
             <input
@@ -515,6 +522,8 @@ export default function Creches() {
 
           {!cartaoNoTrilho && cartao}
         </div>
+
+        <EditarRespostas aberto={editando} aoFechar={() => setEditando(false)} />
 
         <MinhasOpcoes
           itens={escolhidas}

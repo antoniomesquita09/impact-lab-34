@@ -882,3 +882,12 @@ input, select { font: inherit; color: inherit; }
 @media (min-width: 1081px) {
   .pagina.entrada .rail-head { display: none; }
 }
+
+/* atalho para rever o que foi respondido, sem sair da tela do mapa */
+.editar-respostas {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 7px;
+  border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px;
+  font-family: var(--display); font-size: 12.5px; font-weight: 600; color: var(--ink-2);
+  background: var(--surface);
+}
+.editar-respostas:hover { background: var(--sunken); border-color: #C6D0DC; color: var(--ink); }
