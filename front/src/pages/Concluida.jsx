@@ -24,12 +24,16 @@ export default function Concluida() {
   }, [])
 
   return (
-    <div className="pagina estreita">
+    <div className="pagina estreita conclusao">
       <div className="app"><div className="rail">
         <Cabecalho />
         <Passos atual="creches" />
         <AvisoDemo />
 
+        {/* Duas colunas no desktop: a confirmação e o que acontece a seguir de um
+            lado, o resumo do que foi enviado do outro. No celular os dois blocos
+            são só um flex column, na mesma ordem de sempre. */}
+        <div className="conc-esq">
         <div className="titulo">
           <span className="selo">
             <Icone nome="check" tamanho={12} largura={3.5} /> Inscrição enviada
@@ -41,7 +45,9 @@ export default function Concluida() {
             a criança sai da lista — mantenha o telefone atualizado.
           </p>
         </div>
+        </div>
 
+        <div className="conc-dir">
         {!estado ? (
           <Carregando>Buscando sua inscrição…</Carregando>
         ) : (
@@ -71,6 +77,7 @@ export default function Concluida() {
             )}
           </>
         )}
+        </div>
 
         <p className="rodape">
           Protótipo do Claude Impact Lab — nada foi enviado ao matricula.rio.{' '}
