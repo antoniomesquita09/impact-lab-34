@@ -64,6 +64,8 @@ export default function Creches() {
   const mapaRef = useRef(null)
   const [sobre, setSobre] = useState(null) // unidade sob o cursor, para realce e rótulo
   const [editando, setEditando] = useState(false)
+  const [aviso, setAviso] = useState('')
+  const [recarga, setRecarga] = useState(0)
   const [rota, setRota] = useState(null)
   const [buscandoRota, setBuscandoRota] = useState(false)
   const cacheRotas = useRef({})
@@ -92,7 +94,7 @@ export default function Creches() {
       })
       .catch((x) => vivo && setErro(x.message))
     return () => { vivo = false }
-  }, [])
+  }, [recarga])
 
   const recomendadas = useMemo(
     () => (dados ? dados.recomendadas.map((r) => ({ ...r, nome: nomeUnidade(r.nome), faixa: deFaixa(r), recomendada: true })) : []),
@@ -422,6 +424,13 @@ export default function Creches() {
             </p>
           </div>
 
+          {aviso && (
+            <p className="ok" role="status">
+              <Icone nome="check" tamanho={13} largura={3} />
+              <span>{aviso}</span>
+            </p>
+          )}
+
           <button type="button" className="editar-respostas" onClick={() => setEditando(true)}>
             <Icone nome="info" tamanho={13} />
             Editar minhas respostas
@@ -616,7 +625,18 @@ export default function Creches() {
           {!cartaoNoTrilho && cartao}
         </div>
 
-        <EditarRespostas aberto={editando} aoFechar={() => setEditando(false)} />
+        <EditarRespostas
+          aberto={editando}
+          aoFechar={() => setEditando(false)}
+          aoSalvar={() => {
+            // o modal edita nascimento e turno, então o grupamento pode ter
+            // mudado: sem recarregar, a lista falaria de uma turma e a
+            // inscrição seria de outra
+            setRecarga((n) => n + 1)
+            setAviso('Respostas atualizadas.')
+            setTimeout(() => setAviso(''), 4000)
+          }}
+        />
 
         <MinhasOpcoes
           itens={escolhidas}

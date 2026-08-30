@@ -270,6 +270,10 @@ export default function EditarRespostas({ aberto, aoFechar, aoSalvar }) {
       setInicial(respostas)
       setSalvo(true)
       if (aoSalvar) aoSalvar(r)
+      // fecha no sucesso: a razão de ficar aberto era mostrar o antes/depois da
+      // pontuação, que saiu da tela. Quem confirma que deu certo agora é o aviso
+      // na tela de Creches — senão salvar vira um clique que não diz nada.
+      aoFechar()
     } catch (x) {
       setErro(
         x.status === 0 || !x.message
