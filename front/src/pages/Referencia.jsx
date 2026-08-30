@@ -81,10 +81,9 @@ export default function Referencia() {
         <AvisoDemo />
 
         <div className="titulo">
-          <h1>De onde você vai levar a criança?</h1>
+          <h1>Escolha seu endereço de referência.</h1>
           <p className="lede">
-            Pode ser sua casa, o trabalho ou a casa de quem cuida. A distância é o que mais pesa
-            na chance de a matrícula dar certo.
+            Pode ser sua casa, o trabalho ou a casa de quem cuida. A distância para as creches será levada em conta nas recomendações.
           </p>
         </div>
 

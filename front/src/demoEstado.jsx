@@ -51,68 +51,54 @@ export function gravarEstadoDemo(valor) {
 }
 
 const CSS = `
+/* Discreto de propósito: nota de rodapé, não painel. Quem apresenta precisa
+   achar rápido; quem assiste não pode confundir com parte do portal. Por isso
+   fica no canto, em cor secundária, mas com alvo de clique de tamanho normal. */
 .demo-sel {
-  border: 1px dashed rgba(138, 91, 18, .45); border-radius: 14px;
-  padding: 11px 12px 12px; background: rgba(253, 243, 224, .55);
-  display: flex; flex-direction: column; gap: 9px;
+  border: 0; padding: 0; margin: 0; min-width: 0;
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
 }
-.demo-sel > legend, .demo-sel > .demo-sel-tit {
-  display: flex; align-items: center; gap: 6px; padding: 0;
-  font-size: 10px; font-weight: 700; letter-spacing: .07em;
-  text-transform: uppercase; color: #8A5B12;
+.demo-sel > span { font-size: 11px; color: var(--ink-3); white-space: nowrap; }
+.demo-sel select {
+  font: inherit; font-size: 11.5px; color: var(--ink-3);
+  background: none; border: 0; border-bottom: 1px dotted var(--line);
+  padding: 3px 2px; cursor: pointer; max-width: 100%;
 }
-.demo-sel p { margin: 0; font-size: 11.5px; line-height: 1.45; color: #8A5B12; }
-.demo-sel-ops { display: flex; flex-direction: column; gap: 6px; }
-.demo-sel-op {
-  display: flex; align-items: flex-start; gap: 9px; cursor: pointer;
-  border: 1px solid transparent; border-radius: 10px; padding: 7px 9px;
-  background: rgba(255, 255, 255, .6);
+.demo-sel select:hover, .demo-sel select:focus-visible { color: var(--ink-2); border-bottom-color: var(--ink-3); }
+
+/* no desktop sai do fluxo e vai para o canto inferior; no celular fica no
+   fluxo, no fim da página, para não cobrir o botão de entrar */
+@media (min-width: 1081px) {
+  .demo-sel {
+    position: fixed; right: 14px; bottom: 10px; z-index: 5; flex-wrap: nowrap;
+    background: rgba(255, 255, 255, .82); border-radius: 8px; padding: 4px 9px;
+    backdrop-filter: blur(3px);
+  }
 }
-.demo-sel-op:hover { background: #fff; }
-.demo-sel-op.on { border-color: #C79A3E; background: #fff; }
-.demo-sel-op input { position: absolute; opacity: 0; pointer-events: none; }
-.demo-sel-mk {
-  width: 15px; height: 15px; border-radius: 50%; flex: none; margin-top: 1px;
-  border: 1.5px solid #C7B79A; display: grid; place-items: center; background: #fff;
-}
-.demo-sel-op.on .demo-sel-mk { border-color: #8A5B12; }
-.demo-sel-op.on .demo-sel-mk::after {
-  content: ''; width: 7px; height: 7px; border-radius: 50%; background: #8A5B12;
-}
-.demo-sel-tx { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.demo-sel-tx b { font-size: 12.5px; font-weight: 600; color: #4A3A16; line-height: 1.25; }
-.demo-sel-tx small { font-size: 11px; color: #8A7448; line-height: 1.3; }
 `
 
 /**
- * Rotulado como demonstração de propósito: quem assiste precisa entender que é
- * um atalho de apresentação, e não uma pergunta que o portal faria à família.
+ * Nomeado, mas discreto: quem vai apresentar precisa achar rápido e saber qual
+ * estado está ativo; quem assiste não pode confundir com parte do portal nem
+ * ter a atenção puxada para cá. Daí o canto inferior, a cor secundária e o
+ * tamanho de nota de rodapé — com alvo de clique normal, não minúsculo.
  */
 export function SeletorDemo({ valor, aoMudar }) {
   return (
-    <fieldset className="demo-sel">
+    /* label em vez de fieldset/legend: o legend é sempre bloco próprio e
+       quebraria a linha, e no canto isso vira duas linhas em vez de uma */
+    <label className="demo-sel">
       <style>{CSS}</style>
-      <legend>Modo demonstração</legend>
-      <p>
-        Atalho para o júri: escolha a fase do processo que quer ver depois de entrar.
-        Não faz parte do portal.
-      </p>
-      <div className="demo-sel-ops">
+      <span>Modo demonstração:</span>
+      <select
+        value={valor}
+        aria-label="Modo demonstração: fase do processo a ver depois de entrar"
+        onChange={(e) => aoMudar(e.target.value)}
+      >
         {ESTADOS.map((e) => (
-          <label key={e.valor} className={`demo-sel-op${valor === e.valor ? ' on' : ''}`}>
-            <input
-              type="radio" name="mc-demo-estado" value={e.valor}
-              checked={valor === e.valor}
-              onChange={() => aoMudar(e.valor)}
-            />
-            <span className="demo-sel-mk" aria-hidden="true" />
-            <span className="demo-sel-tx">
-              <b>{e.rotulo}</b>
-              <small>{e.ajuda}</small>
-            </span>
-          </label>
+          <option key={e.valor} value={e.valor}>{e.rotulo}</option>
         ))}
-      </div>
-    </fieldset>
+      </select>
+    </label>
   )
 }
