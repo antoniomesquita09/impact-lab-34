@@ -62,15 +62,15 @@ export const preparar = () => ({
 })
 
 const RECOMENDADAS = [
-  { cod: '0209803', nome: 'EDI Prof.ª Suely de Pinho Cavalcante', bairro: 'Vila Isabel', lat: -22.9175, lon: -43.2515, km: 0.9, p_pct: 68,
+  { cod: '0209803', nome: 'EDI Prof.ª Suely de Pinho Cavalcante', bairro: 'Vila Isabel', lat: -22.9175, lon: -43.2515, km: 0.9, p_pct: 68, p_por_posicao: [68, 47, 33, 24, 18],
     motivo: 'Perto da sua referência e com histórico de fila curta no Berçário integral.' },
-  { cod: '0208802', nome: 'EDI Dr. Marcelo Candia', bairro: 'Tijuca', lat: -22.9310, lon: -43.2380, km: 1.4, p_pct: 54,
+  { cod: '0208802', nome: 'EDI Dr. Marcelo Candia', bairro: 'Tijuca', lat: -22.9310, lon: -43.2380, km: 1.4, p_pct: 54, p_por_posicao: [54, 37, 26, 19, 14],
     motivo: 'A 1,4 km e com entrada acima da média da rede nos últimos três processos.' },
-  { cod: '02010', nome: 'CP Creche Patinho Feliz', bairro: 'Vila Isabel', lat: -22.9120, lon: -43.2490, km: 1.8, p_pct: 41,
+  { cod: '02010', nome: 'CP Creche Patinho Feliz', bairro: 'Vila Isabel', lat: -22.9120, lon: -43.2490, km: 1.8, p_pct: 41, p_por_posicao: [41, 28, 20, 15, 11],
     motivo: 'Unidade parceira, entrou na rede em 2024 e ainda tem vaga ociosa no integral.' },
-  { cod: '0208804', nome: 'EDI Chácara do Céu', bairro: 'Tijuca', lat: -22.9350, lon: -43.2270, km: 2.6, p_pct: 33,
+  { cod: '0208804', nome: 'EDI Chácara do Céu', bairro: 'Tijuca', lat: -22.9350, lon: -43.2270, km: 2.6, p_pct: 33, p_por_posicao: [33, 23, 16, 12, 9],
     motivo: 'Um pouco mais longe, mas com fila menor que as unidades vizinhas.' },
-  { cod: '02043', nome: 'CP Creche Santa Mônica', bairro: 'Tijuca', lat: -22.9400, lon: -43.2200, km: 3.4, p_pct: 22,
+  { cod: '02043', nome: 'CP Creche Santa Mônica', bairro: 'Tijuca', lat: -22.9400, lon: -43.2200, km: 3.4, p_pct: 22, p_por_posicao: [22, 15, 11, 8, 6],
     motivo: 'Procura alta no Berçário: costuma chamar poucas crianças da lista de espera.' },
 ]
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Map, { Layer, Marker, NavigationControl, Source } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -33,6 +33,7 @@ export default function Creches() {
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [view, setView] = useState(null)
+  const mapaRef = useRef(null)
   const [celular, setCelular] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches,
   )
@@ -71,6 +72,15 @@ export default function Creches() {
     recomendadas.length > 1 && new Set(recomendadas.map((r) => r.faixa)).size === 1
       ? recomendadas[0].faixa
       : null
+
+  // Abrir/fechar a sidebar muda a largura do mapa. O MapLibre observa o
+  // contêiner, mas a transição da coluna termina depois do reflow — sem este
+  // resize o canvas fica com o tamanho antigo e os pinos caem fora do basemap.
+  const nSel = sel.length
+  useEffect(() => {
+    const t = setTimeout(() => mapaRef.current?.resize(), 320)
+    return () => clearTimeout(t)
+  }, [nSel])
 
   const geojson = useMemo(() => {
     if (!dados) return null
@@ -301,6 +311,7 @@ export default function Creches() {
 
         <div className="mapa">
           <Map
+            ref={mapaRef}
             {...view}
             onMove={(e) => setView(e.viewState)}
             mapStyle={MAP_STYLE}

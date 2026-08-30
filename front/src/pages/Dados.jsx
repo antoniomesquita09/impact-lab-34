@@ -20,7 +20,7 @@ export default function Dados() {
 
   if (!dados) {
     return (
-      <div className="pagina estreita">
+      <div className="pagina media">
         <div className="app"><div className="rail">
           <Cabecalho voltar="/entrar" />
           <Passos atual="dados" />
@@ -57,7 +57,7 @@ export default function Dados() {
   }
 
   return (
-    <div className="pagina estreita">
+    <div className="pagina media">
       <div className="app"><div className="rail">
         <Cabecalho voltar="/entrar" info="A unidade pode pedir comprovação do que você declarar." />
         <Passos atual="dados" />
@@ -128,6 +128,7 @@ export default function Dados() {
             <p className="ajuda">
               Estas respostas contam para a sua posição na fila. A unidade pode pedir comprovação.
             </p>
+            <div className="pendentes">
             {pendentes.map((q) => {
               const sensivel = naoVerificaveis.has(q.id)
               return (
@@ -160,6 +161,7 @@ export default function Dados() {
                 </fieldset>
               )
             })}
+            </div>
           </section>
 
           <Erro>{erro}</Erro>

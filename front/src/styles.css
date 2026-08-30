@@ -513,3 +513,66 @@ input, select { font: inherit; color: inherit; }
   .opcao .acoes { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; gap: 6px; }
   .mini { width: 40px; height: 34px; border: 1px solid var(--line); }
 }
+
+/* ============================================================
+   Largura: cada tela usa o espaço do jeito que faz sentido para ela.
+   Encher a tela não pode virar linha de texto de 2.000px num monitor de 27",
+   então o texto continua com medida de leitura e o que cresce é o que ganha
+   com espaço: o mapa, as colunas e os cartões.
+   ============================================================ */
+.pagina { padding: clamp(14px, 2.2vw, 36px); }
+
+/* telas curtas (Entrar, Concluída): centralizadas, mas com presença */
+.pagina.estreita .app { max-width: 640px; padding: clamp(16px, 2vw, 26px); }
+.pagina.estreita .titulo h1 { font-size: clamp(23px, 2.4vw, 28px); }
+
+/* formulário longo (Dados): medida de leitura preservada */
+.pagina.media .app { max-width: 900px; padding: clamp(16px, 2vw, 26px); }
+.pagina.media .lede, .pagina.media .ajuda { max-width: 70ch; }
+
+/* Creches: a moldura sai e cada coluna vira uma superfície própria */
+@media (min-width: 1081px) {
+  .pagina.larga { padding: clamp(16px, 1.6vw, 28px); }
+  .pagina.larga .app {
+    max-width: 1760px; background: none; border: 0; box-shadow: none; padding: 0;
+    gap: clamp(12px, 1.1vw, 20px);
+    min-height: calc(100vh - 2 * clamp(16px, 1.6vw, 28px));
+  }
+  .pagina.larga .app.duas { grid-template-columns: minmax(360px, 26vw) 1fr; }
+  .pagina.larga .app.duas.tres { grid-template-columns: minmax(340px, 22vw) 1fr minmax(280px, 20vw); }
+
+  .pagina.larga .rail {
+    background: var(--surface); border: 1px solid rgba(16, 32, 58, .06);
+    border-radius: var(--r-frame); box-shadow: var(--shadow-lg);
+    padding: clamp(14px, 1.2vw, 22px); overflow-y: auto;
+    max-height: calc(100vh - 2 * clamp(16px, 1.6vw, 28px));
+  }
+  .pagina.larga .mapa {
+    border-radius: var(--r-frame); box-shadow: var(--shadow-lg); min-height: 0;
+  }
+  .pagina.larga .opcoes {
+    background: var(--surface); border: 1px solid rgba(16, 32, 58, .06);
+    border-radius: var(--r-frame); box-shadow: var(--shadow-lg);
+    padding: clamp(14px, 1.2vw, 22px); overflow-y: auto;
+    max-height: calc(100vh - 2 * clamp(16px, 1.6vw, 28px));
+  }
+  /* a barra de confirmar acompanha a rolagem do trilho */
+  .pagina.larga .confirm {
+    position: sticky; bottom: calc(-1 * clamp(14px, 1.2vw, 22px));
+    background: var(--surface); padding-bottom: clamp(14px, 1.2vw, 22px);
+    margin-bottom: calc(-1 * clamp(14px, 1.2vw, 22px));
+  }
+}
+
+/* monitor grande: o mapa cresce, o texto não */
+@media (min-width: 1600px) {
+  .pagina.larga .titulo h1 { font-size: 26px; }
+  .pagina.larga .lede, .pagina.larga .aviso { max-width: 62ch; }
+}
+
+/* Dados: as perguntas pendentes em duas colunas quando há espaço */
+@media (min-width: 1100px) {
+  .pagina.media .bloco .ask { break-inside: avoid; }
+  .pagina.media .pendentes { columns: 2; column-gap: 14px; }
+  .pagina.media .pendentes > * { margin-bottom: 12px; }
+}
