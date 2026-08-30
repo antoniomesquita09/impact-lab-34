@@ -6,6 +6,7 @@ import { api, MAP_STYLE } from '../api'
 import { AvisoDemo, Cabecalho, Carregando, Chance, corDaFaixa, Erro, Icone, Medidor, Passos } from '../componentes'
 import { deFaixa, km as fmtKm, ROTULO } from '../faixa'
 import { nomeUnidade } from '../texto'
+import { distanciaKm, normalizar } from '../geo'
 import MinhasOpcoes from '../MinhasOpcoes'
 
 // as 872 unidades numa passada de WebGL; só as recomendadas viram Marker
@@ -28,8 +29,10 @@ export default function Creches() {
   const [dados, setDados] = useState(null)
   const [raio, setRaio] = useState(5)
   const [sel, setSel] = useState([])
-  const [aberta, setAberta] = useState(0)
+  const [codAberto, setCodAberto] = useState(null)
   const [busca, setBusca] = useState('')
+  // 852 unidades de uma vez travam a rolagem; cresce sob demanda
+  const [limite, setLimite] = useState(40)
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [view, setView] = useState(null)
@@ -52,26 +55,56 @@ export default function Creches() {
       .then((d) => {
         if (!vivo) return
         setDados(d)
-        setAberta(0)
+        setCodAberto(d.recomendadas?.[0]?.cod ?? null)
         setView((v) => v || { longitude: d.referencia.lon, latitude: d.referencia.lat, zoom: 13.5 })
       })
       .catch((x) => vivo && setErro(x.message))
     return () => { vivo = false }
   }, [raio])
 
-  const recomendadas = useMemo(() => {
+  const recomendadas = useMemo(
+    () => (dados ? dados.recomendadas.map((r) => ({ ...r, nome: nomeUnidade(r.nome), faixa: deFaixa(r), recomendada: true })) : []),
+    [dados],
+  )
+
+  // O resto da rede, por distância da referência. Estas unidades NÃO passaram
+  // pelo modelo com posição, então não recebem faixa de chance — inventar uma
+  // seria mostrar número que não existe. Nome, bairro e distância bastam.
+  const outras = useMemo(() => {
     if (!dados) return []
-    const termo = busca.trim().toLowerCase()
-    const lista = dados.recomendadas.map((r) => ({ ...r, nome: nomeUnidade(r.nome), faixa: deFaixa(r) }))
-    return termo ? lista.filter((r) => r.nome.toLowerCase().includes(termo)) : lista
-  }, [dados, busca])
+    const rec = new Set(dados.recomendadas.map((r) => r.cod))
+    const { lat, lon } = dados.referencia
+    return (dados.todas || [])
+      .filter((u) => !rec.has(u.cod))
+      .map((u) => ({ ...u, nome: nomeUnidade(u.nome), km: distanciaKm(lat, lon, u.lat, u.lon), recomendada: false }))
+      .sort((a, b) => a.km - b.km)
+  }, [dados])
+
+  // Busca vale para nome e bairro. Com texto no campo a divisão some: vira uma
+  // listagem única de resultados, sem top 5 e sem seções.
+  const termo = normalizar(busca)
+  useEffect(() => { setLimite(40) }, [termo, raio])
+  const resultados = useMemo(() => {
+    if (!termo) return []
+    const casa = (u) => normalizar(u.nome).includes(termo) || normalizar(u.bairro).includes(termo)
+    return [...recomendadas, ...outras].filter(casa).sort((a, b) => a.km - b.km)
+  }, [termo, recomendadas, outras])
 
   // O modelo nem sempre separa as cinco. Quando não separa, dizer isso é mais
   // útil (e mais honesto) do que repetir a mesma palavra cinco vezes em silêncio.
   const faixaUniforme =
-    recomendadas.length > 1 && new Set(recomendadas.map((r) => r.faixa)).size === 1
+    !termo && recomendadas.length > 1 && new Set(recomendadas.map((r) => r.faixa)).size === 1
       ? recomendadas[0].faixa
       : null
+
+  // Todas as unidades por código, para o cartão e a sidebar acharem qualquer uma.
+  // Objeto simples de propósito: `Map` aqui é o componente do react-map-gl, que
+  // sombreia o Map nativo neste arquivo.
+  const porCod = useMemo(() => {
+    const m = {}
+    for (const u of [...recomendadas, ...outras]) m[u.cod] = u
+    return m
+  }, [recomendadas, outras])
 
   // Abrir/fechar a sidebar muda a largura do mapa. O MapLibre observa o
   // contêiner, mas a transição da coluna termina depois do reflow — sem este
@@ -129,9 +162,7 @@ export default function Creches() {
   const remover = (cod) => setSel((atual) => atual.filter((c) => c !== cod))
 
   // os dados completos das escolhidas, na ordem que a família definiu
-  const escolhidas = sel
-    .map((cod) => recomendadas.find((r) => r.cod === cod))
-    .filter(Boolean)
+  const escolhidas = sel.map((cod) => porCod[cod]).filter(Boolean)
 
   // A API devolve `p_pct` sempre na posição 1. Só dá para mostrar a faixa por
   // posição quando ela mandar `p_por_posicao`; até lá, a sidebar não exibe faixa.
@@ -159,7 +190,7 @@ export default function Creches() {
   // cima sem esconder os pinos. Nesse caso o cartão desce para o trilho, como
   // já acontece no celular — o mapa continua sendo o herói da tela.
   const cartaoNoTrilho = celular || escolhidas.length > 0
-  const escolhida = recomendadas[aberta] || recomendadas[0]
+  const escolhida = porCod[codAberto] || recomendadas[0]
   const cartao = escolhida ? (
     <article className={`popup${cartaoNoTrilho ? ' no-trilho' : ''}`}>
       <div className="top">
@@ -170,17 +201,28 @@ export default function Creches() {
         </div>
       </div>
       <dl className="stats">
-        <div>
-          <dt>Chance</dt>
-          <dd className="comfaixa" style={{ color: corDaFaixa(escolhida.faixa) }}>
-            <Medidor faixa={escolhida.faixa} />
-            {ROTULO[escolhida.faixa]}
-          </dd>
-        </div>
+        {escolhida.recomendada ? (
+          <div>
+            <dt>Chance</dt>
+            <dd className="comfaixa" style={{ color: corDaFaixa(escolhida.faixa) }}>
+              <Medidor faixa={escolhida.faixa} />
+              {ROTULO[escolhida.faixa]}
+            </dd>
+          </div>
+        ) : (
+          <div><dt>Chance</dt><dd className="sem">não estimada</dd></div>
+        )}
         <div><dt>Distância</dt><dd>{fmtKm(escolhida.km)}</dd></div>
         <div><dt>Turno</dt><dd>{dados.horario}</dd></div>
       </dl>
-      <p className="porque"><b>Por que aparece aqui:</b> {escolhida.motivo}</p>
+      {escolhida.recomendada ? (
+        <p className="porque"><b>Por que aparece aqui:</b> {escolhida.motivo}</p>
+      ) : (
+        <p className="porque">
+          Esta creche não está entre as cinco recomendadas para você, então não
+          calculamos a chance dela. Você pode escolhê-la do mesmo jeito.
+        </p>
+      )}
       <button
         type="button"
         className={`acao${sel.includes(escolhida.cod) ? ' remover' : ''}`}
@@ -190,6 +232,41 @@ export default function Creches() {
       </button>
     </article>
   ) : null
+
+  // um item serve as duas listas: com posição e faixa nas recomendadas,
+  // só nome, bairro e distância nas demais
+  const Item = ({ u, posicao }) => {
+    const ord = ordinal(u.cod)
+    const ativo = codAberto === u.cod
+    return (
+      <li>
+        <button
+          type="button"
+          className={`item${ativo ? ' sel' : ''}`}
+          aria-pressed={ativo}
+          onClick={() => setCodAberto(u.cod)}
+        >
+          {posicao ? (
+            <span className={`rank ${u.faixa}`}>{posicao}</span>
+          ) : (
+            <span className="rank neutro" aria-hidden="true">
+              <Icone nome="predio" tamanho={15} largura={1.9} />
+            </span>
+          )}
+          <span>
+            <span className="nome">{u.nome}</span>
+            <span className="meta">{u.bairro || 'Rio de Janeiro'} · {fmtKm(u.km)}</span>
+            {ord && (
+              <span className="ordinal">
+                <Icone nome="check" tamanho={9} largura={3.5} />{ord}
+              </span>
+            )}
+          </span>
+          {u.recomendada && <Chance faixa={u.faixa} />}
+        </button>
+      </li>
+    )
+  }
 
   return (
     <div className="pagina larga">
@@ -256,36 +333,47 @@ export default function Creches() {
             </p>
           )}
 
-          <ul className="list">
-            {recomendadas.map((r, i) => {
-              const ord = ordinal(r.cod)
-              return (
-                <li key={r.cod}>
-                  <button
-                    type="button"
-                    className={`item${aberta === i ? ' sel' : ''}`}
-                    aria-pressed={aberta === i}
-                    onClick={() => setAberta(i)}
-                  >
-                    <span className={`rank ${r.faixa}`}>{i + 1}</span>
-                    <span>
-                      <span className="nome">{r.nome}</span>
-                      <span className="meta">{r.bairro} · {fmtKm(r.km)}</span>
-                      {ord && (
-                        <span className="ordinal">
-                          <Icone nome="check" tamanho={9} largura={3.5} />{ord}
-                        </span>
-                      )}
-                    </span>
-                    <Chance faixa={r.faixa} />
+          {termo ? (
+            <ul className="list">
+              <li className="secao">
+                {resultados.length === 0
+                  ? 'Nenhuma creche encontrada'
+                  : `${resultados.length} creche${resultados.length > 1 ? 's' : ''} para "${busca.trim()}"`}
+              </li>
+              {resultados.slice(0, limite).map((u) => <Item key={u.cod} u={u} />)}
+              {resultados.length > limite && (
+                <li>
+                  <button type="button" className="mais" onClick={() => setLimite((n) => n + 40)}>
+                    Mostrar mais {Math.min(40, resultados.length - limite)} de {resultados.length - limite}
                   </button>
                 </li>
-              )
-            })}
-            {recomendadas.length === 0 && (
-              <li className="vazio">Nenhuma creche com esse nome entre as recomendadas.</li>
-            )}
-          </ul>
+              )}
+            </ul>
+          ) : (
+            <>
+              <ul className="list">
+                <li className="secao destaque">
+                  <Icone nome="check" tamanho={12} largura={3.5} />
+                  Recomendadas para você
+                </li>
+                {recomendadas.map((r, i) => <Item key={r.cod} u={r} posicao={i + 1} />)}
+              </ul>
+
+              <ul className="list">
+                <li className="secao">
+                  Todas as creches de {dados.grupamento} {dados.horario.toLowerCase()}, da mais perto para a mais longe
+                </li>
+                {outras.slice(0, limite).map((u) => <Item key={u.cod} u={u} />)}
+                {outras.length > limite && (
+                  <li>
+                    <button type="button" className="mais" onClick={() => setLimite((n) => n + 40)}>
+                      Mostrar mais {Math.min(40, outras.length - limite)} de {outras.length - limite} restantes
+                    </button>
+                  </li>
+                )}
+              </ul>
+            </>
+          )}
 
           <p className="aviso">
             <Icone nome="info" tamanho={14} />
@@ -335,9 +423,9 @@ export default function Creches() {
             {recomendadas.map((r, i) => (
               <Marker
                 key={r.cod} longitude={r.lon} latitude={r.lat} anchor="bottom"
-                onClick={(ev) => { ev.originalEvent.stopPropagation(); setAberta(i) }}
+                onClick={(ev) => { ev.originalEvent.stopPropagation(); setCodAberto(r.cod) }}
               >
-                <span className={`mk${aberta === i ? ' on' : ''}`} role="button"
+                <span className={`mk${codAberto === r.cod ? ' on' : ''}`} role="button"
                       aria-label={`${r.nome}, chance ${ROTULO[r.faixa].toLowerCase()}`}>
                   <span className={`pin ${r.faixa}`}><span>{i + 1}</span></span>
                   <span className="badge">{ROTULO[r.faixa]}</span>
