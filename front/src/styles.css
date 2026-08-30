@@ -477,7 +477,15 @@ input, select { font: inherit; color: inherit; }
 }
 .opcao:active { cursor: grabbing; }
 .opcao.arrastando { opacity: .45; }
-.opcao.alvo { border-color: var(--accent); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+/* barra de inserção: mostra ONDE o card vai cair, no espaço entre dois cards.
+   Usa o verde-petróleo que já marca seleção no sistema, em vez de um azul solto. */
+.opcoes-lista .inserir { list-style: none; height: 0; margin: -4px 0; position: relative; }
+.opcoes-lista .inserir i {
+  display: block; height: 4px; border-radius: 999px; background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(18, 98, 106, .16);
+  animation: surge .12s ease both;
+}
+@keyframes surge { from { opacity: 0; transform: scaleX(.9); } }
 .opcao .ordem {
   width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff;
   display: grid; place-items: center; font-family: var(--display); font-weight: 700;

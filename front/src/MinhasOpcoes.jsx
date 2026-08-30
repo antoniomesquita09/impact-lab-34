@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Icone, Medidor } from './componentes'
 import { km as fmtKm, ROTULO } from './faixa'
 
@@ -19,15 +19,31 @@ import { km as fmtKm, ROTULO } from './faixa'
  */
 export default function MinhasOpcoes({ itens, aoMover, aoRemover, pctNaPosicao }) {
   const [arrastando, setArrastando] = useState(null)
-  const [alvo, setAlvo] = useState(null)
+  // `slot` é o ESPAÇO entre cards onde o card cai (0 = antes do primeiro,
+  // itens.length = depois do último). Soltar em cima de um card não troca
+  // posições: a semântica é mover e empurrar as demais, que é o certo para uma
+  // lista de preferência.
+  const [slot, setSlot] = useState(null)
 
   if (!itens.length) return null
 
-  function soltar(destino) {
-    if (arrastando !== null && arrastando !== destino) aoMover(arrastando, destino)
-    setArrastando(null)
-    setAlvo(null)
+  // sobre a própria posição de origem não há movimento — e não há indicador
+  const movimenta = slot !== null && arrastando !== null && slot !== arrastando && slot !== arrastando + 1
+
+  function sobre(e, i) {
+    e.preventDefault()
+    const r = e.currentTarget.getBoundingClientRect()
+    setSlot(e.clientY < r.top + r.height / 2 ? i : i + 1)
   }
+
+  function soltar(e) {
+    e.preventDefault()
+    if (movimenta) aoMover(arrastando, slot > arrastando ? slot - 1 : slot)
+    setArrastando(null)
+    setSlot(null)
+  }
+
+  const Indicador = () => <li className="inserir" aria-hidden="true"><i /></li>
 
   return (
     <aside className="opcoes" aria-label="Minhas opções, na ordem de preferência">
@@ -40,19 +56,19 @@ export default function MinhasOpcoes({ itens, aoMover, aoRemover, pctNaPosicao }
         vezes mais que a 5ª. Arraste para reordenar ou use as setas.
       </p>
 
-      <ol className="opcoes-lista">
+      <ol className="opcoes-lista" onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setSlot(null) }}>
         {itens.map((c, i) => {
           const pct = pctNaPosicao ? pctNaPosicao(c, i) : null
           return (
+            <Fragment key={c.cod}>
+              {movimenta && slot === i && <Indicador />}
             <li
-              key={c.cod}
-              className={`opcao${arrastando === i ? ' arrastando' : ''}${alvo === i ? ' alvo' : ''}`}
+              className={`opcao${arrastando === i ? ' arrastando' : ''}`}
               draggable
-              onDragStart={() => setArrastando(i)}
-              onDragOver={(e) => { e.preventDefault(); setAlvo(i) }}
-              onDragLeave={() => setAlvo((a) => (a === i ? null : a))}
-              onDrop={(e) => { e.preventDefault(); soltar(i) }}
-              onDragEnd={() => { setArrastando(null); setAlvo(null) }}
+              onDragStart={(e) => { setArrastando(i); e.dataTransfer.effectAllowed = 'move' }}
+              onDragOver={(e) => sobre(e, i)}
+              onDrop={soltar}
+              onDragEnd={() => { setArrastando(null); setSlot(null) }}
             >
               <span className="ordem" aria-hidden="true">{i + 1}</span>
 
@@ -100,6 +116,8 @@ export default function MinhasOpcoes({ itens, aoMover, aoRemover, pctNaPosicao }
                 </button>
               </span>
             </li>
+            {movimenta && slot === itens.length && i === itens.length - 1 && <Indicador />}
+            </Fragment>
           )
         })}
       </ol>
