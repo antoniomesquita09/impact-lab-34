@@ -64,6 +64,8 @@ export default function Creches() {
   const [sobre, setSobre] = useState(null) // unidade sob o cursor, para realce e rótulo
   const [editando, setEditando] = useState(false)
   const [rota, setRota] = useState(null)
+  const [buscandoRota, setBuscandoRota] = useState(false)
+  const cacheRotas = useRef({})
   const [celular, setCelular] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches,
   )
@@ -160,11 +162,24 @@ export default function Creches() {
   // caminho), e nesse caso desenhamos a linha reta tracejada e dizemos que é
   // reta — sem inventar traçado.
   useEffect(() => {
-    if (!codAberto) { setRota(null); return }
+    if (!codAberto) { setRota(null); setBuscandoRota(false); return }
+
+    // já calculada nesta sessão: instantânea na segunda vez
+    const guardada = cacheRotas.current[codAberto]
+    if (guardada) { setRota(guardada); setBuscandoRota(false); return }
+
     let vivo = true
+    setRota(null)
+    setBuscandoRota(true)
     api(`/api/inscricao/rota?cod=${encodeURIComponent(codAberto)}`)
-      .then((r) => vivo && setRota(r))
+      .then((r) => {
+        cacheRotas.current[codAberto] = r
+        // `vivo` descarta a resposta se a pessoa já clicou em outra creche —
+        // senão a rota de uma apareceria desenhada para outra
+        if (vivo) setRota(r)
+      })
       .catch(() => vivo && setRota(null))
+      .finally(() => vivo && setBuscandoRota(false))
     return () => { vivo = false }
   }, [codAberto])
 
@@ -281,7 +296,13 @@ export default function Creches() {
         <div><dt>Distância</dt><dd>{fmtKm(escolhida.km)}</dd></div>
         <div><dt>Turno</dt><dd>{dados.horario}</dd></div>
       </dl>
-      {rota?.cod === escolhida.cod && (
+      {buscandoRota && (
+        <p className="via buscando">
+          <span className="spin pequeno" aria-hidden="true" />
+          Calculando o caminho pela rua…
+        </p>
+      )}
+      {!buscandoRota && rota?.cod === escolhida.cod && (
         <p className="via">
           {rota.rota
             ? <><b>{rota.rota.km.toFixed(1).replace('.', ',')} km</b> pela via · {rota.rota.minutos} min de carro</>

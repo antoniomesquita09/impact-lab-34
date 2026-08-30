@@ -915,3 +915,8 @@ input, select { font: inherit; color: inherit; }
   max-width: none;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+
+/* enquanto a rota vem: o cartão já mostra a distância em linha reta, e este
+   aviso diz que falta o caminho pela rua. Nada bloqueia — a rota é detalhe. */
+.popup .via.buscando { display: flex; align-items: center; gap: 8px; color: var(--ink-3); }
+.spin.pequeno { width: 13px; height: 13px; border-width: 2px; }
