@@ -818,3 +818,41 @@ input, select { font: inherit; color: inherit; }
   /* sem a marca no formulário, o espaçador do cabeçalho vira um círculo solto */
   .pagina.entrada .icon-btn.vazio { display: none; }
 }
+
+/* ---------- Concluída: resumo de um lado, o que acontece a seguir do outro ----------
+   Bloco pedido pelo subagente que trabalha em Concluida.jsx; vive aqui porque
+   styles.css é o único arquivo de estilo (um segundo arquivo carregado depois
+   sobrescreveria por cascata sem gerar conflito de git). */
+.conc-esq, .conc-dir { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+@media (min-width: 1081px) {
+  .pagina.conclusao .app {
+    max-width: 1120px; background: none; border: 0; box-shadow: none; padding: 0;
+  }
+  .pagina.conclusao .rail {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, .92fr);
+    column-gap: clamp(28px, 3.2vw, 56px);
+    row-gap: 20px;
+    align-content: center;
+  }
+  .pagina.conclusao .rail > .rail-head,
+  .pagina.conclusao .rail > .steps,
+  .pagina.conclusao .rail > .demo-bar { grid-column: 1 / -1; }
+  .pagina.conclusao .conc-esq { grid-column: 1; align-self: center; }
+  .pagina.conclusao .conc-dir {
+    grid-column: 2;
+    background: var(--surface);
+    border: 1px solid rgba(16, 32, 58, .06);
+    border-radius: var(--r-frame);
+    box-shadow: var(--shadow-lg);
+    padding: clamp(18px, 1.8vw, 26px);
+  }
+  .pagina.conclusao .rail > .rodape { grid-column: 1; max-width: 52ch; }
+  .pagina.conclusao .titulo h1 { font-size: clamp(28px, 2.6vw, 38px); }
+  .pagina.conclusao .lede { max-width: 46ch; font-size: 15px; }
+}
+
+@media (min-width: 1800px) {
+  .pagina.conclusao .app { max-width: 1280px; }
+}
