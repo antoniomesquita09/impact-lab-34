@@ -377,7 +377,6 @@ export default function Creches() {
         <div className="rail">
           <Cabecalho
             voltar="/inscricao/referencia"
-            info="A chance combina a distância da sua referência com o histórico de cada unidade."
           />
           <Passos atual="creches" />
           <AvisoDemo />

@@ -71,14 +71,15 @@ input, select { font: inherit; color: inherit; }
 .rail { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
 /* ---------- cabeçalho ---------- */
-.rail-head { display: flex; align-items: center; gap: 10px; padding: 4px 2px 0; }
+.rail-head { position: relative; display: flex; align-items: center; min-height: 34px; gap: 10px; padding: 4px 2px 0; }
 .icon-btn {
   width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line);
   display: grid; place-items: center; color: var(--ink-2); background: var(--surface); flex: none;
 }
 .icon-btn:hover { background: var(--sunken); color: var(--ink); }
 .icon-btn.vazio { border-color: transparent; pointer-events: none; }
-.brand { display: flex; align-items: center; gap: 9px; margin: 0 auto; }
+/* centrada por posicionamento, para não depender de espaçador do outro lado */
+.brand { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 9px; }
 .brandmark {
   width: 32px; height: 32px; border-radius: 10px; background: var(--ink);
   display: grid; place-items: center; color: #fff; flex: none;

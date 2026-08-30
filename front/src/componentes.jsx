@@ -24,28 +24,26 @@ export function Passos({ atual }) {
   )
 }
 
-export function Cabecalho({ voltar, info }) {
+/**
+ * Cabeçalho: só o voltar (quando há) e a marca.
+ *
+ * A marca é centrada por posicionamento absoluto, não por espaçadores
+ * invisíveis nas pontas — os espaçadores já viraram "círculos cinzas soltos"
+ * duas vezes hoje, quando o cartão que os continha perdeu a moldura.
+ */
+export function Cabecalho({ voltar }) {
   const navegar = useNavigate()
   return (
     <div className="rail-head">
-      {voltar ? (
+      {voltar && (
         <button type="button" className="icon-btn" aria-label="Voltar" onClick={() => navegar(voltar)}>
           <Icone nome="voltar" />
         </button>
-      ) : (
-        <span className="icon-btn vazio" aria-hidden="true" />
       )}
       <div className="brand">
         <span className="brandmark"><Icone nome="casa" tamanho={16} /></span>
         <b>Matrícula Carioca</b>
       </div>
-      {info ? (
-        <button type="button" className="icon-btn" aria-label={info} title={info}>
-          <Icone nome="info" />
-        </button>
-      ) : (
-        <span className="icon-btn vazio" aria-hidden="true" />
-      )}
     </div>
   )
 }

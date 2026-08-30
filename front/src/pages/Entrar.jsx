@@ -90,7 +90,7 @@ export default function Entrar() {
 
       <div className="app">
         <div className="rail">
-          <Cabecalho info="Seus dados são usados só para a inscrição na creche." />
+          <Cabecalho />
           <Passos atual="conta" />
           <AvisoDemo />
 

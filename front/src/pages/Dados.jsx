@@ -393,7 +393,6 @@ export default function Dados() {
       <div className="wz-topo">
         <Cabecalho
           voltar={etapa === 0 ? '/entrar' : undefined}
-          info="A unidade pode pedir comprovação do que você declarar."
         />
         <Passos atual="dados" />
       </div>
