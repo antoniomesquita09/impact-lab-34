@@ -617,3 +617,67 @@ input, select { font: inherit; color: inherit; }
    da altura da janela, margin auto deixa rolar; align-items corta o topo. */
 .pagina.estreita { min-height: 100vh; }
 .pagina.estreita .app { margin-block: auto; }
+
+/* ---------- Entrar: tela dividida no desktop ----------
+   O painel da esquerda enche o espaço com a tese do produto em vez de vazio.
+   No celular ele some e sobra só o formulário — a família não precisa do pitch. */
+.pagina.entrada { min-height: 100vh; }
+.pagina.entrada .app { margin-block: auto; max-width: 560px; padding: clamp(16px, 2vw, 26px); }
+.pagina.entrada .titulo h1 { font-size: clamp(23px, 2.4vw, 28px); }
+.tese { display: none; }
+
+@media (min-width: 1081px) {
+  .pagina.entrada {
+    display: grid; grid-template-columns: 1.05fr minmax(440px, 0.95fr);
+    gap: clamp(20px, 2.4vw, 44px); align-items: stretch;
+    max-width: 1500px; margin: 0 auto;
+  }
+  .pagina.entrada .app { margin-block: auto; width: 100%; }
+
+  .tese {
+    display: flex; flex-direction: column; gap: clamp(20px, 2.6vh, 34px);
+    background: var(--ink);
+    background-image: radial-gradient(120% 90% at 8% 0%, #1B3357 0%, transparent 55%);
+    color: #fff; border-radius: var(--r-frame); box-shadow: var(--shadow-lg);
+    padding: clamp(26px, 3vw, 46px);
+  }
+  .tese-topo { display: flex; align-items: center; gap: 10px; }
+  .tese-topo .brandmark { background: rgba(255, 255, 255, .12); }
+  .tese-topo b { font-family: var(--display); font-size: 16px; font-weight: 600; letter-spacing: -.01em; }
+
+  .tese-corpo { display: flex; flex-direction: column; gap: 18px; margin-block: auto; max-width: 46ch; }
+  .tese h2 {
+    font-size: clamp(28px, 2.9vw, 40px); font-weight: 600; letter-spacing: -.03em; line-height: 1.12;
+  }
+  .tese p { font-size: 14.5px; line-height: 1.6; color: rgba(255, 255, 255, .74); }
+
+  .numeros { margin: 6px 0 0; display: flex; flex-direction: column; gap: 16px; }
+  .numeros > div { display: flex; flex-direction: column; gap: 3px; padding-left: 14px; border-left: 2px solid rgba(255, 255, 255, .16); }
+  .numeros dt {
+    font-family: var(--display); font-size: 10.5px; font-weight: 600; letter-spacing: .07em;
+    text-transform: uppercase; color: rgba(255, 255, 255, .5); order: 2;
+  }
+  .numeros dd {
+    margin: 0; font-family: var(--display); font-size: 27px; font-weight: 700;
+    letter-spacing: -.03em; line-height: 1.05; font-variant-numeric: tabular-nums; order: 1;
+  }
+  .numeros dd span {
+    display: block; font-size: 12.5px; font-weight: 400; letter-spacing: 0;
+    color: rgba(255, 255, 255, .6); margin-top: 5px; font-family: var(--body);
+  }
+  .tese-nota {
+    border-top: 1px solid rgba(255, 255, 255, .14); padding-top: 16px;
+    color: rgba(255, 255, 255, .88) !important; font-weight: 500;
+  }
+  .tese-rodape { font-size: 11.5px; color: rgba(255, 255, 255, .42); line-height: 1.5; }
+}
+
+/* acima de 1.500px a tese para de crescer e a tela respira nas bordas */
+@media (min-width: 1560px) {
+  .pagina.entrada { grid-template-columns: 1fr minmax(460px, 620px); }
+}
+@media (min-width: 1081px) {
+  /* a marca já está no painel da tese; repeti-la no formulário é ruído */
+  .pagina.entrada .app .brand { display: none; }
+  .pagina.entrada .rail-head { justify-content: flex-end; }
+}
