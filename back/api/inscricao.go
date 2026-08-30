@@ -123,6 +123,9 @@ func (a *App) referencia(w http.ResponseWriter, r *http.Request, cpf string) {
 
 	var lat, lon float64
 	texto := in.Texto
+	// precisao: "exata" quando a família marca no mapa; "rua"/"bairro" quando
+	// veio do CEP. Nunca devolvemos ponto sem saber de onde ele veio.
+	precisao := "exata"
 	switch {
 	case in.Lat != nil && in.Lon != nil:
 		lat, lon = *in.Lat, *in.Lon
@@ -135,7 +138,7 @@ func (a *App) referencia(w http.ResponseWriter, r *http.Request, cpf string) {
 			erro(w, 422, "Não achamos as coordenadas deste CEP. Marque o ponto no mapa.")
 			return
 		}
-		lat, lon, texto = loc.Lat, loc.Lon, loc.Endereco
+		lat, lon, texto, precisao = loc.Lat, loc.Lon, loc.Endereco, string(loc.Precisao)
 	default:
 		erro(w, 400, "Informe um CEP ou marque o ponto no mapa.")
 		return
@@ -149,7 +152,7 @@ func (a *App) referencia(w http.ResponseWriter, r *http.Request, cpf string) {
 		erro(w, 500, "Não conseguimos salvar o local. Tente de novo.")
 		return
 	}
-	escreverJSON(w, 200, map[string]any{"lat": lat, "lon": lon, "texto": texto})
+	escreverJSON(w, 200, map[string]any{"lat": lat, "lon": lon, "texto": texto, "precisao": precisao})
 }
 
 type pontoMapa struct {
