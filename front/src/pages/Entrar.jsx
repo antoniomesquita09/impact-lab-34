@@ -106,7 +106,13 @@ export default function Entrar() {
 
           <SeletorDemo valor={estadoDemo} aoMudar={setEstadoDemo} />
 
-          <p className="orgao">Prefeitura do Rio · Secretaria Municipal de Educação</p>
+          <div className="orgao">
+            <img
+              src="/rio-prefeitura.png" alt="Prefeitura da Cidade do Rio de Janeiro"
+              className="orgao-logo" width="751" height="377"
+            />
+            <span>Secretaria Municipal<br />de Educação</span>
+          </div>
 
           <p className="rodape">
             Demonstração: 100.000.000-19 (Ana) · 100.000.001-08 (Bruno) · 100.000.002-80 (Carla).

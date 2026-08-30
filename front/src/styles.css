@@ -158,6 +158,10 @@ input, select { font: inherit; color: inherit; }
   background: var(--surface); width: 100%;
 }
 .field input:hover { border-color: #C6D0DC; }
+.field input:focus-visible {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(18, 98, 106, .14);
+}
 .linha { display: flex; gap: 10px; align-items: flex-end; }
 .crescer { flex: 1; }
 
@@ -629,21 +633,32 @@ input, select { font: inherit; color: inherit; }
 .pagina.estreita { min-height: 100vh; }
 .pagina.estreita .app { margin-block: auto; }
 
-/* ---------- Entrar: tela dividida no desktop ----------
-   O painel da esquerda enche o espaço com a tese do produto em vez de vazio.
-   No celular ele some e sobra só o formulário — a família não precisa do pitch. */
-.pagina.entrada { min-height: 100vh; }
-.pagina.entrada .app { margin-block: auto; max-width: 560px; padding: clamp(16px, 2vw, 26px); }
+/* ---------- Entrar: coluna única centrada ----------
+   O painel da tese saiu a pedido do JP. Em 30/08 a tela ganhou o retoque
+   institucional: lavagens suaves no fundo, friso no topo do cartão e a marca
+   oficial da Prefeitura na assinatura. */
+.pagina.entrada {
+  min-height: 100vh;
+  background:
+    radial-gradient(860px 480px at 84% -12%, #DBE8E8 0%, transparent 62%),
+    radial-gradient(720px 460px at 4% 110%, #E2E6F1 0%, transparent 58%);
+}
+.pagina.entrada .app {
+  margin-block: auto; max-width: 560px; padding: clamp(16px, 2vw, 26px);
+  position: relative; overflow: hidden;
+}
+/* friso institucional no topo do cartão */
+.pagina.entrada .app::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 4px;
+  background: linear-gradient(90deg, var(--accent) 0%, #1B3357 60%, var(--ink) 100%);
+}
 .pagina.entrada .titulo h1 { font-size: clamp(23px, 2.4vw, 28px); }
 .tese { display: none; }
 
 @media (min-width: 1081px) {
-  /* Coluna única centrada: o painel da tese saiu a pedido do JP e meia tela
-     vazia ficaria pior que o problema que ele resolvia. */
   .pagina.entrada { display: flex; justify-content: center; }
   .pagina.entrada .app {
-    margin-block: auto; width: 100%; max-width: 440px;
-    background: none; border: 0; box-shadow: none;
+    margin-block: auto; width: 100%; max-width: 460px;
     padding: clamp(24px, 3vw, 40px);
   }
 
@@ -685,11 +700,16 @@ input, select { font: inherit; color: inherit; }
   .tese-rodape { font-size: 11.5px; color: rgba(255, 255, 255, .42); line-height: 1.5; }
 }
 
-/* assinatura institucional em texto — não reproduzimos identidade oficial */
+/* assinatura institucional — marca oficial incluída a pedido do JP (30/08) */
 .orgao {
-  font-family: var(--display); font-size: 11px; font-weight: 600;
+  display: flex; align-items: center; gap: 13px;
+  border-top: 1px solid var(--line-2); padding-top: 16px;
+}
+.orgao-logo { height: 38px; width: auto; display: block; flex: none; }
+.orgao span {
+  font-family: var(--display); font-size: 10.5px; font-weight: 600;
   letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3);
-  border-top: 1px solid var(--line-2); padding-top: 14px;
+  line-height: 1.45; border-left: 1px solid var(--line); padding-left: 13px;
 }
 
 
