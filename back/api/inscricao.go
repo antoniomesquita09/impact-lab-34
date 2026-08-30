@@ -19,12 +19,37 @@ func (a *App) garantirInscricao(r *http.Request, cpf string) {
 // carrega o carimbo de proveniência (fonte/órgão/referência/confiança) por critério.
 type perguntaSaida struct {
 	modelo.Pergunta
-	Validada   bool   `json:"validada"`
-	Valor      *bool  `json:"valor"`
+	Validada bool  `json:"validada"`
+	Valor    *bool `json:"valor"`
+	// Resposta é o que a FAMÍLIA declarou, separado de Valor (o que a
+	// Prefeitura verificou). Misturar os dois apagaria a proveniência, que é
+	// justamente o que permite auditar o score depois.
+	Resposta   *bool  `json:"resposta"`
 	Fonte      string `json:"fonte,omitempty"`
 	Orgao      string `json:"orgao,omitempty"`
 	Referencia string `json:"referencia,omitempty"`
 	Confianca  string `json:"confianca,omitempty"`
+}
+
+// respostasSalvas devolve o que a família declarou, indexado pelo id da
+// pergunta. Mapa vazio quando ainda não respondeu nada.
+func (a *App) respostasSalvas(r *http.Request, cpf string) map[int]bool {
+	var bruto string
+	if err := a.Pool.QueryRow(r.Context(),
+		`SELECT respostas::text FROM inscricoes WHERE cpf=$1`, cpf).Scan(&bruto); err != nil {
+		return map[int]bool{}
+	}
+	var texto map[string]bool
+	if json.Unmarshal([]byte(bruto), &texto) != nil {
+		return map[int]bool{}
+	}
+	out := make(map[int]bool, len(texto))
+	for k, v := range texto {
+		if id, err := strconv.Atoi(k); err == nil {
+			out[id] = v
+		}
+	}
+	return out
 }
 
 func (a *App) preparar(w http.ResponseWriter, r *http.Request, cpf string) {
@@ -39,9 +64,16 @@ func (a *App) preparar(w http.ResponseWriter, r *http.Request, cpf string) {
 	bruto, _ := json.Marshal(pv)
 	a.Pool.Exec(r.Context(), `UPDATE inscricoes SET prevalidadas=$2, atualizado_em=now() WHERE cpf=$1`, cpf, string(bruto))
 
+	// o que a família já respondeu antes, para o wizard reabrir preenchido
+	respostas := a.respostasSalvas(r, cpf)
+
 	saida := make([]perguntaSaida, 0, len(a.Ref.Perguntas))
 	for _, q := range a.Ref.Perguntas {
 		ps := perguntaSaida{Pergunta: q}
+		if v, ok := respostas[q.ID]; ok {
+			valor := v
+			ps.Resposta = &valor
+		}
 		if v, ok := pv[q.ID]; ok {
 			valor := v.Valor
 			ps.Validada, ps.Valor, ps.Fonte = true, &valor, v.Fonte
@@ -236,16 +268,38 @@ func (a *App) opcoes(w http.ResponseWriter, r *http.Request, cpf string) {
 	escreverJSON(w, 200, map[string]any{"ok": true, "opcoes": in.Unidades})
 }
 
+// estado devolve a inscrição inteira e coesa: as respostas que geraram o score,
+// de onde veio cada critério verificado, os dados da criança, a referência e as
+// opções. É o registro que a Prefeitura precisa para validar depois a
+// informação que produziu aquela pontuação.
 func (a *App) estado(w http.ResponseWriter, r *http.Request, cpf string) {
 	var score *int
 	var grup, hor, texto *string
-	var opcoes string
+	var lat, lon *float64
+	var opcoes, respostas, prevalidadas string
+	var atualizado *time.Time
 	a.Pool.QueryRow(r.Context(),
-		`SELECT score,grupamento,horario,ref_texto,opcoes::text FROM inscricoes WHERE cpf=$1`,
-		cpf).Scan(&score, &grup, &hor, &texto, &opcoes)
+		`SELECT score,grupamento,horario,ref_texto,
+		        ST_Y(ref::geometry),ST_X(ref::geometry),
+		        opcoes::text,respostas::text,prevalidadas::text,atualizado_em
+		 FROM inscricoes WHERE cpf=$1`,
+		cpf).Scan(&score, &grup, &hor, &texto, &lat, &lon, &opcoes, &respostas, &prevalidadas, &atualizado)
+
 	lista := []string{}
 	json.Unmarshal([]byte(opcoes), &lista)
+	resp := map[string]bool{}
+	json.Unmarshal([]byte(respostas), &resp)
+	pv := map[string]verificacao.Criterio{}
+	json.Unmarshal([]byte(prevalidadas), &pv)
+
 	escreverJSON(w, 200, map[string]any{
-		"score": score, "grupamento": grup, "horario": hor, "ref_texto": texto, "opcoes": lista,
+		"score": score, "grupamento": grup, "horario": hor,
+		"ref_texto": texto, "ref_lat": lat, "ref_lon": lon,
+		"opcoes":    lista,
+		"respostas": resp,
+		// carimbo de proveniência por critério: fonte, órgão, referência e
+		// confiança do que NÃO foi autodeclarado
+		"prevalidadas":  pv,
+		"atualizado_em": atualizado,
 	})
 }

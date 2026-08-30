@@ -215,3 +215,68 @@ func TestOpcoesRecusaListaInvalida(t *testing.T) {
 		t.Fatal("unidade inexistente deveria dar 400")
 	}
 }
+
+// TestEstadoDevolveRegistroCoeso garante que a inscrição é recuperável inteira
+// por CPF: as respostas que geraram o score, a proveniência do que foi
+// verificado, os dados da criança, a referência e as opções.
+func TestEstadoDevolveRegistroCoeso(t *testing.T) {
+	app, limpar := appDeTeste(t)
+	defer limpar()
+	h := app.Rotas()
+	_, reg := post(t, h, "/api/auth/registrar", "", map[string]string{
+		"cpf": cpfTeste, "nome": "T", "nascimento": "1990-01-01", "senha": "x"})
+	tok := reg["token"].(string)
+
+	get(t, h, "/api/inscricao/preparar", tok)
+	post(t, h, "/api/inscricao/respostas", tok, map[string]any{
+		"respostas": map[string]bool{"20": true}, "nascimento_crianca": "2025-06-10", "horario": "Integral"})
+	post(t, h, "/api/inscricao/referencia", tok, map[string]any{"lat": -22.9068, "lon": -43.1729, "texto": "Centro"})
+
+	w, out := get(t, h, "/api/inscricao", tok)
+	if w.Code != 200 {
+		t.Fatalf("estado = %d", w.Code)
+	}
+	resp, ok := out["respostas"].(map[string]any)
+	if !ok || resp["20"] != true {
+		t.Fatalf("respostas não voltaram: %v", out["respostas"])
+	}
+	if out["score"] == nil || out["grupamento"] != "Berçário" || out["horario"] != "Integral" {
+		t.Fatalf("dados da criança incompletos: %v", out)
+	}
+	if out["ref_texto"] != "Centro" || out["ref_lat"] == nil || out["ref_lon"] == nil {
+		t.Fatalf("referência incompleta: %v", out)
+	}
+	if out["prevalidadas"] == nil || out["atualizado_em"] == nil {
+		t.Fatalf("proveniência ou carimbo de tempo ausentes: %v", out)
+	}
+}
+
+// TestPrepararReabreComAsRespostasDaFamilia: ao voltar ao wizard, a família vê
+// o que já respondeu — sem o front precisar guardar cópia no navegador.
+func TestPrepararReabreComAsRespostasDaFamilia(t *testing.T) {
+	app, limpar := appDeTeste(t)
+	defer limpar()
+	h := app.Rotas()
+	_, reg := post(t, h, "/api/auth/registrar", "", map[string]string{
+		"cpf": cpfTeste, "nome": "T", "nascimento": "1990-01-01", "senha": "x"})
+	tok := reg["token"].(string)
+
+	get(t, h, "/api/inscricao/preparar", tok)
+	post(t, h, "/api/inscricao/respostas", tok, map[string]any{
+		"respostas": map[string]bool{"20": true}, "nascimento_crianca": "2025-06-10", "horario": "Integral"})
+
+	_, out := get(t, h, "/api/inscricao/preparar", tok)
+	achou := false
+	for _, p := range out["perguntas"].([]any) {
+		q := p.(map[string]any)
+		if int(q["id"].(float64)) == 20 {
+			if q["resposta"] != true {
+				t.Fatalf("resposta da família não voltou na pergunta 20: %v", q)
+			}
+			achou = true
+		}
+	}
+	if !achou {
+		t.Fatal("pergunta 20 não veio no preparar")
+	}
+}
