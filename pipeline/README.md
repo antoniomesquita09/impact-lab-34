@@ -43,6 +43,40 @@ criança desista, mas porque a cauda da lista é preenchimento, fica longe e mor
 fica com o resultado completo da rodada, ou intacto. Rodar duas vezes dá o mesmo estado. Se a
 agregação devolver zero unidades ou régua vazia, ele recusa gravar em vez de esvaziar o banco.
 
+## Como somar vagas ociosas sem errar
+
+`SELECT sum(ociosas) FROM unidade_capacidade` está **errado** e devolve 11.861. Onde a fonte não
+informa turno, a mesma linha é gravada nos dois turnos (para casar com qualquer busca), então o
+`SUM` cru conta essas em dobro. A query certa exclui uma das cópias:
+
+```sql
+SELECT fonte, sum(ociosas)
+FROM unidade_capacidade
+WHERE NOT turno_inferido OR turno = 'Integral'   -- a cópia 'Parcial' das inferidas fica de fora
+GROUP BY fonte;
+--  parceira  2596
+--  publica   6421
+--  total     9017
+```
+
+**E mesmo assim 9.017 não é o número do briefing.** As ~8.100 vagas ociosas vêm do *agregado das
+planilhas*, não desta tabela:
+
+| | Agregado oficial | Esta tabela |
+|---|---:|---:|
+| Públicas | 6.457 (53.432 − 46.975) | 6.421 |
+| Parceiras | 1.665 (rodapé da planilha) | 2.596 |
+| **Total** | **8.122** | **9.017** |
+
+As duas diferenças têm causa conhecida. Nas públicas (6.421 vs 6.457): 18 unidades têm matrícula
+acima da capacidade e o piso zero impede que a superlotação delas compense vaga alheia — a diferença
+de 36 vagas é exatamente isso. Nas parceiras (2.596 vs 1.665): o rodapé oficial desconta abatimentos
+e alunos incluídos que a planilha só reporta agregados, e não há como distribuí-los por grupamento.
+
+**Regra prática:** o número por unidade ("5 vagas ociosas em Maternal I nesta creche") é sólido e é
+o que vai na tela. Um total de rede cita **8.122 com a composição declarada** — nunca a soma desta
+tabela.
+
 ## Limitações declaradas
 
 - **A distância da calibração é uma proxy.** A base anonimizada não traz o endereço da família —
