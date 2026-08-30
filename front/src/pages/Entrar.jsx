@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { AvisoDemo, Cabecalho, Erro, Icone, Passos } from '../componentes'
+import { CHAVE_ESTADO, SeletorDemo, lerEstadoDemo } from '../demoEstado'
 
 const mascaraCPF = (v) => {
   const d = v.replace(/\D/g, '').slice(0, 11)
@@ -17,6 +18,9 @@ export default function Entrar() {
   const [f, setF] = useState({ cpf: '', nome: '', nascimento: '', senha: '' })
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
+  // atalho de apresentação: em que fase do processo a família está. Quem lê e
+  // decide a rota é o App; aqui a tela só grava a escolha.
+  const [estadoDemo, setEstadoDemo] = useState(lerEstadoDemo)
 
   const mudar = (e) => {
     const { name, value } = e.target
@@ -28,6 +32,7 @@ export default function Entrar() {
     setErro('')
     setEnviando(true)
     try {
+      try { localStorage.setItem(CHAVE_ESTADO, estadoDemo) } catch { /* sem storage: cai no fluxo normal */ }
       const r = await api(`/api/auth/${modo === 'entrar' ? 'entrar' : 'registrar'}`, f)
       localStorage.setItem('token', r.token)
       localStorage.setItem('nome', r.nome || '')
@@ -140,6 +145,8 @@ export default function Entrar() {
           >
             {modo === 'entrar' ? 'Ainda não tenho conta' : 'Já tenho conta'}
           </button>
+
+          <SeletorDemo valor={estadoDemo} aoMudar={setEstadoDemo} />
 
           <p className="rodape">
             Demonstração: 100.000.000-19 (Ana) · 100.000.001-08 (Bruno) · 100.000.002-80 (Carla).
