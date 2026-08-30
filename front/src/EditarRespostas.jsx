@@ -63,7 +63,6 @@ const CSS = `
   background: none; border: 0; padding: 0; cursor: pointer; color: inherit; font: inherit;
 }
 .er-tx { flex: 1; min-width: 0; font-size: 13.5px; line-height: 1.35; }
-.er-pts { font-size: 11px; color: #6A7789; white-space: nowrap; }
 .er-chip {
   font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
   background: #F0F3F7; color: #6A7789; white-space: nowrap;
@@ -330,11 +329,7 @@ export default function EditarRespostas({ aberto, aoFechar, aoSalvar }) {
                         aria-expanded={expandida}
                         onClick={() => setAbertaId(expandida ? null : q.id)}
                       >
-                        <span className="er-tx">
-                          {q.texto}
-                          {q.pontos > 0 && <span className="er-pts"> · {q.pontos} pts</span>}
-                          {q.desempate && <span className="er-pts"> · critério de desempate</span>}
-                        </span>
+                        <span className="er-tx">{q.texto}</span>
                         <span className={`er-chip ${v === true ? 'sim' : v === false ? 'nao' : 'vazio'}`}>
                           {v === true ? 'Sim' : v === false ? 'Não' : 'sem resposta'}
                         </span>
@@ -381,7 +376,6 @@ export default function EditarRespostas({ aberto, aoFechar, aoSalvar }) {
                       </span>
                       <span className="er-tx">
                         {q.texto}
-                        {q.valor && q.pontos > 0 && <b> · {q.pontos} pts</b>}
                         <small>
                           {[q.fonte, q.orgao, q.referencia].filter(Boolean).join(' · ')}
                           {q.confianca === 'media' && ' · confiança média'}
@@ -419,13 +413,19 @@ export default function EditarRespostas({ aberto, aoFechar, aoSalvar }) {
                 </section>
               )}
 
-              <Erro>{erro}</Erro>
-              {semMudanca && <p className="er-nota">Nada mudou — não havia o que salvar.</p>}
             </>
           )}
         </div>
 
+        {/* erro e aviso moram no rodapé fixo: no corpo rolável eles caíam abaixo
+            da dobra e a pessoa clicava em Salvar sem ver por que nada acontecia */}
         <div className="er-pe">
+          {(erro || semMudanca) && (
+            <div style={{ width: '100%' }}>
+              <Erro>{erro}</Erro>
+              {semMudanca && !erro && <p className="er-nota">Nada mudou — não havia o que salvar.</p>}
+            </div>
+          )}
           <p className="er-score">
             {scoreDepois !== null ? (
               <>

@@ -189,7 +189,6 @@ export default function Dados() {
                 </span>
                 <span>
                   {q.texto}
-                  {q.valor && q.pontos > 0 && <b> · {q.pontos} pts</b>}
                   <small>
                     {[q.fonte, q.orgao, q.referencia].filter(Boolean).join(' · ')}
                     {q.confianca === 'media' && ' · confiança média'}
@@ -244,7 +243,6 @@ export default function Dados() {
     conteudo = (
       <>
         <div className="titulo">
-          {q.pontos > 0 && <span className="selo leve">Vale {q.pontos} pontos na fila</span>}
           <h1>{q.texto}</h1>
           {sensivel ? (
             <p className="lede aviso-sensivel">
