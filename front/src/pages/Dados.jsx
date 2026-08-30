@@ -294,7 +294,7 @@ export default function Dados() {
           </h1>
           <p className="lede">
             {validadas.length > 0
-              ? `Consultamos os cadastros e confirmamos ${validadas.length} ${validadas.length === 1 ? 'critério' : 'critérios'} por você, sem precisar pedir nada. Se algo estiver errado, procure o CRAS ou a unidade.`
+              ? `Consultamos os cadastros e verificamos ${validadas.length} ${validadas.length === 1 ? 'critério' : 'critérios'} por você, sem precisar pedir nada. Se algo estiver errado, procure o CRAS ou a unidade.`
               : 'Não encontramos seu CPF nos cadastros da Prefeitura, então desta vez você responde tudo à mão.'}
           </p>
         </div>
@@ -304,7 +304,7 @@ export default function Dados() {
             {validadas.map((q) => (
               <li key={q.id} className={q.valor ? 'sim' : 'nao'}>
                 <span className="mk2">
-                  {q.valor ? <Icone nome="check" tamanho={10} largura={3.5} /> : <span className="tracinho" />}
+                  {q.valor ? <Icone nome="check" tamanho={10} largura={3.5} /> : <Icone nome="xis" tamanho={9} largura={3.2} />}
                 </span>
                 <span>
                   {q.texto}

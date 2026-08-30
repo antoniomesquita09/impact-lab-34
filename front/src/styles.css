@@ -185,14 +185,17 @@ input, select { font: inherit; color: inherit; }
   display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px;
   border-radius: var(--r-md); font-size: 13px; line-height: 1.4; background: var(--accent-soft);
 }
-.validadas li.nao { background: var(--sunken); }
+/* "não" precisa se distinguir do "sim" sem virar alarme: aqui um "não" quase
+   sempre é neutro ou positivo ("é refugiada? não"). Rosado lavado, no mesmo
+   nível de saturação do verde dos positivos — distingue, não reprova. */
+.validadas li.nao { background: #FBF1EF; }
 .validadas small { display: block; color: var(--accent-ink); font-size: 11px; margin-top: 3px; font-weight: 600; }
-.validadas li.nao small { color: var(--ink-3); }
+.validadas li.nao small { color: #9A6055; }
 .mk2 {
   width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: #fff;
   display: grid; place-items: center; flex: none; margin-top: 1px;
 }
-.validadas li.nao .mk2 { background: var(--ink-3); }
+.validadas li.nao .mk2 { background: #B4695E; }
 .tracinho { width: 8px; height: 2px; background: currentColor; border-radius: 1px; }
 
 .ask {
@@ -879,7 +882,11 @@ input, select { font: inherit; color: inherit; }
    fica: agora que o ⓘ saiu, ele é só a marca, que é o que a tela deve ter. */
 .pagina.entrada .steps { display: none; }
 .pagina.entrada .rail-head { justify-content: center; margin-bottom: 6px; }
-.pagina.entrada .brand { position: static; transform: none; }
+/* a marca centrada por absoluto só vale no trilho vertical; nas faixas
+   horizontais (wizard, entrada) ela volta ao fluxo, senão sobrepõe o voltar */
+.pagina.entrada .brand,
+.pagina.wz .brand,
+.wz .brand { position: static; transform: none; }
 
 /* atalho para rever o que foi respondido, sem sair da tela do mapa */
 .editar-respostas {
