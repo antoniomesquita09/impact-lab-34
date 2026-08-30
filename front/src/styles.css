@@ -611,3 +611,9 @@ input, select { font: inherit; color: inherit; }
 .mais:hover { background: var(--sunken); border-color: #C6D0DC; color: var(--ink); }
 
 .stats dd.sem { font-size: 13px; font-weight: 600; color: var(--ink-3); letter-spacing: 0; }
+
+/* ---------- centragem vertical nas telas curtas ----------
+   `margin-block: auto` em vez de `align-items: center`: quando o conteúdo passa
+   da altura da janela, margin auto deixa rolar; align-items corta o topo. */
+.pagina.estreita { min-height: 100vh; }
+.pagina.estreita .app { margin-block: auto; }
