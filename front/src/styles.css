@@ -332,6 +332,11 @@ input, select { font: inherit; color: inherit; }
   border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
   padding: 15px; display: flex; flex-direction: column; gap: 13px;
 }
+/* fora do mapa (trilho do celular ou sidebar aberta) o cartão entra no fluxo.
+   É explícito, e não dependente de media query: a sidebar abre em qualquer largura. */
+.popup.no-trilho {
+  position: static; width: auto; box-shadow: none; border-color: var(--line);
+}
 .popup .top { display: flex; gap: 12px; align-items: flex-start; }
 .popup .avatar {
   width: 44px; height: 44px; border-radius: 13px; background: var(--accent-soft);
@@ -441,3 +446,70 @@ input, select { font: inherit; color: inherit; }
 
 .mk.ref.arrastavel { cursor: grab; }
 .mk.ref.arrastavel:active { cursor: grabbing; }
+
+/* ---------- sidebar: minhas opções, na ordem de preferência ---------- */
+/* Entra com a primeira seleção. A transição da coluna evita o pulo de layout. */
+.app.duas { transition: grid-template-columns .28s ease; }
+.app.duas.tres { grid-template-columns: 400px 1fr 300px; }
+
+.opcoes {
+  display: flex; flex-direction: column; gap: 12px; min-width: 0;
+  background: var(--sunken); border-radius: var(--r-lg); padding: 15px;
+  animation: entra .28s ease both;
+}
+@keyframes entra { from { opacity: 0; transform: translateX(10px); } }
+.opcoes-topo { display: flex; align-items: baseline; gap: 9px; }
+.opcoes-topo h2 { font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+.opcoes-topo .conta {
+  margin-left: auto; font-family: var(--display); font-size: 11px; font-weight: 700;
+  color: var(--accent-ink); background: var(--accent-soft); border-radius: 999px; padding: 2px 9px;
+}
+.opcoes-ajuda { font-size: 12px; color: var(--ink-2); line-height: 1.45; }
+.opcoes-ajuda.leve { display: flex; gap: 7px; align-items: flex-start; color: var(--ink-3); margin-top: auto; }
+
+.opcoes-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.opcao {
+  display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 10px; cursor: grab; transition: border-color .15s, opacity .15s, transform .15s;
+}
+.opcao:active { cursor: grabbing; }
+.opcao.arrastando { opacity: .45; }
+.opcao.alvo { border-color: var(--accent); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.opcao .ordem {
+  width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: grid; place-items: center; font-family: var(--display); font-weight: 700;
+  font-size: 14px; font-variant-numeric: tabular-nums;
+}
+.opcao .corpo { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.opcao .nome {
+  font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: -.01em; line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.opcao .meta { font-size: 11.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.opcao .faixa-pos { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--ink-2); margin-top: 3px; }
+.opcao .faixa-pos b.alta { color: var(--accent); }
+.opcao .faixa-pos b.media { color: var(--amber); }
+.opcao .faixa-pos b.baixa { color: var(--alert); }
+
+.opcao .acoes { display: flex; flex-direction: column; gap: 3px; }
+.mini {
+  width: 26px; height: 24px; border-radius: 7px; display: grid; place-items: center;
+  color: var(--ink-3); border: 1px solid transparent;
+}
+.mini:hover:not(:disabled) { background: var(--sunken); color: var(--ink); border-color: var(--line); }
+.mini:disabled { opacity: .3; cursor: not-allowed; }
+.mini.remover:hover { background: var(--alert-soft); color: var(--alert); border-color: var(--alert-soft); }
+
+@media (max-width: 1080px) {
+  .app.duas.tres { grid-template-columns: 1fr; }
+  /* a sidebar vira lista logo abaixo do mapa, antes do trilho */
+  .app.duas.tres > .opcoes { order: -1; }
+}
+@media (max-width: 720px) {
+  .opcoes { padding: 12px; }
+  /* no celular as ações ficam lado a lado: em coluna o card fica alto e vazio */
+  .opcao { grid-template-columns: 28px 1fr; row-gap: 8px; }
+  .opcao .acoes { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; gap: 6px; }
+  .mini { width: 40px; height: 34px; border: 1px solid var(--line); }
+}

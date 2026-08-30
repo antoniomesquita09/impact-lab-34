@@ -6,6 +6,7 @@ import { api, MAP_STYLE } from '../api'
 import { AvisoDemo, Cabecalho, Carregando, Chance, corDaFaixa, Erro, Icone, Medidor, Passos } from '../componentes'
 import { deFaixa, km as fmtKm, ROTULO } from '../faixa'
 import { nomeUnidade } from '../texto'
+import MinhasOpcoes from '../MinhasOpcoes'
 
 // as 872 unidades numa passada de WebGL; só as recomendadas viram Marker
 const camadaTodas = {
@@ -106,6 +107,31 @@ export default function Creches() {
     return i < 0 ? null : `${i + 1}ª opção`
   }
 
+  // reordenar a lista de preferência: tira da origem e insere no destino
+  const mover = (de, para) =>
+    setSel((atual) => {
+      if (para < 0 || para >= atual.length) return atual
+      const nova = [...atual]
+      const [item] = nova.splice(de, 1)
+      nova.splice(para, 0, item)
+      return nova
+    })
+  const remover = (cod) => setSel((atual) => atual.filter((c) => c !== cod))
+
+  // os dados completos das escolhidas, na ordem que a família definiu
+  const escolhidas = sel
+    .map((cod) => recomendadas.find((r) => r.cod === cod))
+    .filter(Boolean)
+
+  // A API devolve `p_pct` sempre na posição 1. Só dá para mostrar a faixa por
+  // posição quando ela mandar `p_por_posicao`; até lá, a sidebar não exibe faixa.
+  const faixaNaPosicao = dados.recomendadas.some((r) => Array.isArray(r.p_por_posicao))
+    ? (c, i) => {
+        const p = c.p_por_posicao?.[Math.min(i, 4)]
+        return p == null ? null : deFaixa({ p_pct: p })
+      }
+    : null
+
   async function concluir() {
     setErro('')
     setEnviando(true)
@@ -119,9 +145,13 @@ export default function Creches() {
     }
   }
 
+  // Com a sidebar aberta o mapa fica estreito demais para carregar o cartão por
+  // cima sem esconder os pinos. Nesse caso o cartão desce para o trilho, como
+  // já acontece no celular — o mapa continua sendo o herói da tela.
+  const cartaoNoTrilho = celular || escolhidas.length > 0
   const escolhida = recomendadas[aberta] || recomendadas[0]
   const cartao = escolhida ? (
-    <article className="popup">
+    <article className={`popup${cartaoNoTrilho ? ' no-trilho' : ''}`}>
       <div className="top">
         <span className="avatar"><Icone nome="predio" tamanho={21} largura={1.8} /></span>
         <div>
@@ -153,7 +183,7 @@ export default function Creches() {
 
   return (
     <div className="pagina larga">
-      <div className="app duas">
+      <div className={`app duas${escolhidas.length ? ' tres' : ''}`}>
         <div className="rail">
           <Cabecalho
             voltar="/inscricao/referencia"
@@ -177,7 +207,7 @@ export default function Creches() {
             />
           </label>
 
-          {celular && cartao}
+          {cartaoNoTrilho && cartao}
 
           <div className="filters">
             <div className="fgroup">
@@ -315,8 +345,15 @@ export default function Creches() {
             </ul>
           </div>
 
-          {!celular && cartao}
+          {!cartaoNoTrilho && cartao}
         </div>
+
+        <MinhasOpcoes
+          itens={escolhidas}
+          aoMover={mover}
+          aoRemover={remover}
+          faixaNaPosicao={faixaNaPosicao}
+        />
       </div>
     </div>
   )
