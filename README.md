@@ -91,7 +91,21 @@ e sem til, e que a régua de pontuação mudou de natureza entre 2023 e 2024. Ca
 virou um teste. O desenvolvimento foi guiado por testes contra os dados reais, não por fixtures
 otimistas.
 
-**Dentro da aplicação.** <!-- TODO (back/front): descrever o papel do Claude em runtime -->
+**Dentro da aplicação.** Hoje, nenhum. Buscamos por `anthropic|claude|openai|llm|gpt|completion|
+prompt` em todo o código de `back/`, `pipeline/` e `front/`: zero ocorrência. As duas únicas chamadas
+de rede em runtime são a BrasilAPI (geocodificação de CEP) e a API de verificação de critérios por
+CPF — nenhum modelo é chamado em tempo de execução.
+
+Isso é uma escolha, não uma lacuna. Uma decisão que define a posição de uma criança na fila precisa
+ser reproduzível, explicável para a família e auditável pelo controle interno. Um LLM no caminho do
+score seria exatamente o que a SME não consegue auditar. O que decide, aqui, é determinístico: a
+régua de pontuação lida do banco, `ST_DWithin` no PostGIS e uma matriz 5×3 calibrada sobre 5 anos de
+dados reais. `Probabilidade()` são 15 linhas de Go, com piso, teto e teste — cabe num parecer.
+
+O lugar natural para o Claude operar dentro do produto, num próximo passo, é onde há **texto e não
+decisão**: explicar em linguagem simples por que aquela creche foi recomendada, e apoiar o servidor
+da CRE na fase de convocação, que hoje é manual e sem rastreio. Não está implementado, e o README
+não vai fingir que está.
 
 ## Como rodar
 
