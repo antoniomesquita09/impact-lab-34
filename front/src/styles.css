@@ -635,16 +635,13 @@ input, select { font: inherit; color: inherit; }
 .tese { display: none; }
 
 @media (min-width: 1081px) {
-  /* o painel sangra até as bordas da janela: a superfície é a página, não uma
-     caixa dentro dela. O padding da .pagina é anulado só aqui. */
-  .pagina.entrada {
-    display: grid; grid-template-columns: 1.05fr minmax(440px, 0.95fr);
-    gap: 0; align-items: stretch; padding: 0; max-width: none;
-  }
+  /* Coluna única centrada: o painel da tese saiu a pedido do JP e meia tela
+     vazia ficaria pior que o problema que ele resolvia. */
+  .pagina.entrada { display: flex; justify-content: center; }
   .pagina.entrada .app {
-    margin-block: auto; width: 100%; max-width: 480px; justify-self: center;
+    margin-block: auto; width: 100%; max-width: 440px;
     background: none; border: 0; box-shadow: none;
-    padding: clamp(24px, 3vw, 48px);
+    padding: clamp(24px, 3vw, 40px);
   }
 
   .tese {
@@ -685,17 +682,13 @@ input, select { font: inherit; color: inherit; }
   .tese-rodape { font-size: 11.5px; color: rgba(255, 255, 255, .42); line-height: 1.5; }
 }
 
-/* telas muito largas: o painel continua até a borda, o texto dele para de
-   crescer (a coluna interna tem teto) e o formulário ganha respiro */
-@media (min-width: 1560px) {
-  .pagina.entrada { grid-template-columns: 1fr minmax(520px, 44%); }
-  .tese-corpo, .tese-topo, .tese-rodape { width: 100%; max-width: 620px; margin-inline: auto; }
+/* assinatura institucional em texto — não reproduzimos identidade oficial */
+.orgao {
+  font-family: var(--display); font-size: 11px; font-weight: 600;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3);
+  border-top: 1px solid var(--line-2); padding-top: 14px;
 }
-@media (min-width: 1081px) {
-  /* a marca já está no painel da tese; repeti-la no formulário é ruído */
-  .pagina.entrada .app .brand { display: none; }
-  .pagina.entrada .rail-head { justify-content: flex-end; }
-}
+
 
 /* ---------- Dados em etapas: uma pergunta por tela ---------- */
 .progresso { display: flex; align-items: center; gap: 11px; }
@@ -881,15 +874,12 @@ input, select { font: inherit; color: inherit; }
 .rotulo-mapa .maplibregl-popup-tip { border-top-color: var(--ink) !important; }
 .rotulo-mapa { pointer-events: none; }
 
-/* ---------- Entrar: sem barra de passos e sem cabeçalho no desktop ----------
-   A barra de passos não orienta ninguém antes de o fluxo começar, e o ⓘ ficava
-   órfão no canto. Removidos com display:none (não sobra caixa ocupando espaço).
-   No celular o cabeçalho fica, porque ali a marca do painel da tese não existe. */
+/* ---------- Entrar: sem barra de passos ----------
+   A barra de passos não orienta ninguém antes de o fluxo começar. O cabeçalho
+   fica: agora que o ⓘ saiu, ele é só a marca, que é o que a tela deve ter. */
 .pagina.entrada .steps { display: none; }
-
-@media (min-width: 1081px) {
-  .pagina.entrada .rail-head { display: none; }
-}
+.pagina.entrada .rail-head { justify-content: center; margin-bottom: 6px; }
+.pagina.entrada .brand { position: static; transform: none; }
 
 /* atalho para rever o que foi respondido, sem sair da tela do mapa */
 .editar-respostas {

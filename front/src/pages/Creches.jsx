@@ -46,12 +46,13 @@ const camadaAlvo = {
   paint: { 'circle-radius': 14, 'circle-opacity': 0, 'circle-stroke-width': 0 },
 }
 
-const RAIOS = [3, 5, 10]
+// A tela não oferece mais recorte por faixa de distância; a busca usa o raio
+// padrão e a lista completa continua ordenada da mais perto para a mais longe.
+const RAIO_KM = 5
 
 export default function Creches() {
   const navegar = useNavigate()
   const [dados, setDados] = useState(null)
-  const [raio, setRaio] = useState(5)
   const [sel, setSel] = useState([])
   const [codAberto, setCodAberto] = useState(null)
   const [busca, setBusca] = useState('')
@@ -80,7 +81,7 @@ export default function Creches() {
   useEffect(() => {
     let vivo = true
     setErro('')
-    api(`/api/inscricao/recomendacoes?raio_km=${raio}`)
+    api(`/api/inscricao/recomendacoes?raio_km=${RAIO_KM}`)
       .then((d) => {
         if (!vivo) return
         setDados(d)
@@ -89,7 +90,7 @@ export default function Creches() {
       })
       .catch((x) => vivo && setErro(x.message))
     return () => { vivo = false }
-  }, [raio])
+  }, [])
 
   const recomendadas = useMemo(
     () => (dados ? dados.recomendadas.map((r) => ({ ...r, nome: nomeUnidade(r.nome), faixa: deFaixa(r), recomendada: true })) : []),
@@ -125,7 +126,7 @@ export default function Creches() {
   // Busca vale para nome e bairro. Com texto no campo a divisão some: vira uma
   // listagem única de resultados, sem top 5 e sem seções.
   const termo = normalizar(busca)
-  useEffect(() => { setLimite(40) }, [termo, raio])
+  useEffect(() => { setLimite(40) }, [termo])
   const resultados = useMemo(() => {
     if (!termo) return []
     const casa = (u) => normalizar(u.nome).includes(termo) || normalizar(u.bairro).includes(termo)
@@ -403,28 +404,12 @@ export default function Creches() {
 
           {cartaoNoTrilho && cartao}
 
-          <div className="filters">
-            <div className="fgroup">
-              <span className="rotulo">Distância</span>
-              <div className="opts">
-                {RAIOS.map((r) => (
-                  <button
-                    key={r} type="button" className={`opt${raio === r ? ' on' : ''}`}
-                    aria-pressed={raio === r} onClick={() => setRaio(r)}
-                  >
-                    {r} km
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
           {dados.raio_ampliado && (
             <p className="dica">
               <Icone nome="alerta" tamanho={13} />
               <span>
-                Nenhuma creche de {dados.grupamento} {dados.horario.toLowerCase()} em {raio} km —
-                ampliamos a busca para {raio * 2} km.
+                Não encontramos creches de {dados.grupamento} {dados.horario.toLowerCase()} perto da
+                sua referência, então ampliamos a busca.
               </span>
             </p>
           )}

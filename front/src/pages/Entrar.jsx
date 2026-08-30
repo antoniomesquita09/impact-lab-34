@@ -46,48 +46,6 @@ export default function Entrar() {
 
   return (
     <div className="pagina entrada">
-      {/* Painel da tese, só no desktop: o espaço horizontal carrega substância
-          em vez de vazio. Todos os números vêm das bases de 2021-2025. */}
-      <aside className="tese" aria-label="Sobre o Matrícula Carioca">
-        <div className="tese-topo">
-          <span className="brandmark"><Icone nome="casa" tamanho={16} /></span>
-          <b>Matrícula Carioca</b>
-        </div>
-
-        <div className="tese-corpo">
-          <h2>A fila da creche não é só falta de vaga.</h2>
-          <p>
-            A rede tem vagas ociosas e lista de espera ao mesmo tempo. O descompasso é
-            territorial: a família escolhe cinco creches sem nenhuma informação de distância,
-            a lista enche de opções inviáveis e a vaga fica presa.
-          </p>
-
-          <dl className="numeros">
-            <div>
-              <dt>Inscrições num único processo</dt>
-              <dd>45 mil<span>em 872 unidades da rede</span></dd>
-            </div>
-            <div>
-              <dt>Confirmam a matrícula na 1ª opção</dt>
-              <dd>42,7%<span>no próprio bairro, contra 31,8% fora dele</span></dd>
-            </div>
-            <div>
-              <dt>Opções usadas, das cinco possíveis</dt>
-              <dd>2,4<span>a cauda da lista fica longe e morre</span></dd>
-            </div>
-          </dl>
-
-          <p className="tese-nota">
-            Aqui a distância entra na conta antes da escolha, e os critérios que a Prefeitura
-            já conhece vêm preenchidos.
-          </p>
-        </div>
-
-        <p className="tese-rodape">
-          Protótipo do Claude Impact Lab Rio · dados públicos da SME de 2021 a 2025
-        </p>
-      </aside>
-
       <div className="app">
         <div className="rail">
           <Cabecalho />
@@ -147,6 +105,8 @@ export default function Entrar() {
           </button>
 
           <SeletorDemo valor={estadoDemo} aoMudar={setEstadoDemo} />
+
+          <p className="orgao">Prefeitura do Rio · Secretaria Municipal de Educação</p>
 
           <p className="rodape">
             Demonstração: 100.000.000-19 (Ana) · 100.000.001-08 (Bruno) · 100.000.002-80 (Carla).
