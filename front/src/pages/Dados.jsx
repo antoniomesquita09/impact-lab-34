@@ -9,11 +9,108 @@ import { guardarRespostas } from '../EditarRespostas'
  *
  * A primeira etapa é a única com muita coisa junta, de propósito — é o momento
  * mais forte do produto: a família vê tudo o que a Prefeitura já sabe e que ela
- * não vai precisar responder. Depois vem uma pergunta de cada vez.
+ * não vai precisar responder. Depois vem uma pergunta de cada vez, e o bloco de
+ * confirmados NÃO volta: ele é o argumento da abertura, não um painel fixo.
+ *
+ * O progresso mora em duas faixas no topo, atravessando a tela: a do processo
+ * (Conta · Dados · Local · Creches) e a das perguntas, que lista cada uma pelo
+ * nome, marca com um check o que já foi respondido e deixa voltar com um clique.
+ * Embaixo delas a pergunta da vez usa a largura toda, com teto de leitura.
+ *
+ * O CSS vive aqui dentro para não disputar o styles.css com as outras sessões.
  *
  * As respostas ficam em memória e vão numa ÚNICA chamada ao
  * `POST /api/inscricao/respostas` no fim — nada de uma requisição por pergunta.
  */
+
+const CSS = `
+.wz { display: flex; flex-direction: column; gap: 12px; min-height: 100vh; justify-content: flex-start; }
+.wz-topo {
+  background: var(--surface); border: 1px solid rgba(16, 32, 58, .06);
+  border-radius: var(--r-frame); box-shadow: var(--shadow-lg);
+  padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 10px;
+}
+.wz-topo .rail-head { padding: 0; }
+.wz-topo .steps { width: 100%; }
+
+/* faixa do histórico: rola na horizontal em vez de quebrar em várias linhas —
+   no pior caso (CPF fora dos cadastros) são 15 perguntas */
+.wz-hist {
+  display: flex; gap: 7px; overflow-x: auto; overscroll-behavior-x: contain;
+  padding: 2px 2px 6px; scrollbar-width: thin;
+}
+.wz-chip {
+  font: inherit; display: inline-flex; align-items: center; gap: 6px; flex: none;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink-2);
+  border-radius: 999px; padding: 6px 12px 6px 8px; cursor: default; max-width: 270px;
+}
+.wz-chip[data-clicavel='sim'] { cursor: pointer; }
+.wz-chip[data-clicavel='sim']:hover { background: var(--sunken); color: var(--ink); }
+.wz-chip b {
+  font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
+  width: 19px; height: 19px; border-radius: 50%; flex: none;
+  display: grid; place-items: center; background: var(--line-2); color: var(--ink-2);
+}
+.wz-chip span {
+  font-size: 12px; line-height: 1.2; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.wz-chip.feita { border-color: #BFDDD3; background: #E9F4F0; color: #145446; }
+.wz-chip.feita b { background: #1F6F5C; color: #fff; }
+.wz-chip.agora { border-color: var(--ink); background: var(--ink); color: #fff; }
+.wz-chip.agora b { background: rgba(255, 255, 255, .22); color: #fff; }
+
+.wz-palco { display: flex; flex-direction: column; gap: 16px; flex: 1; }
+
+@media (min-width: 1081px) {
+  .wz { max-width: 1500px; margin: 0 auto; gap: 14px; }
+  .wz-topo { flex-direction: row; align-items: center; gap: 24px; padding: 12px 20px; }
+  .wz-topo .rail-head { flex: none; }
+  .wz-topo .steps { flex: 1; }
+  .wz-palco {
+    background: var(--surface); border: 1px solid rgba(16, 32, 58, .06);
+    border-radius: var(--r-frame); box-shadow: var(--shadow-lg);
+    padding: clamp(28px, 3vw, 52px);
+    align-items: center; justify-content: center; gap: 24px;
+  }
+  /* largura própria com teto: sem isto os cartões Sim/Não esticariam para os
+     1.000px do painel e virariam dois outdoors */
+  .wz-palco .etapa,
+  .wz-palco > .erro,
+  .wz-palco .passo-acoes { width: min(720px, 100%); }
+  /* altura mínima estável: uma pergunta de uma linha e outra de três não podem
+     mover o bloco de lugar, senão a troca de etapa fica saltando */
+  .wz-palco .etapa { gap: 22px; min-height: 340px; justify-content: center; }
+  .wz-palco .etapa .titulo h1 { font-size: clamp(28px, 2.7vw, 38px); }
+  .wz-palco .etapa .lede { font-size: 15px; }
+  .wz-palco .escolhas { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; max-width: 520px; }
+  .wz-palco .escolha { min-height: 168px; }
+  .wz-palco .escolha .ilustra { width: 54px; height: 54px; }
+  .wz-palco .passo-acoes { margin-top: 0; }
+  /* a abertura é longa: ali o bloco alinha ao topo em vez de centralizar */
+  .wz-palco .etapa:has(.validadas) { min-height: 0; }
+  .wz-palco .etapa .validadas { width: 100%; }
+}
+
+@media (min-width: 1800px) {
+  .wz { max-width: 1680px; }
+  .wz-palco { padding: 64px; }
+}
+`
+
+/**
+ * Rótulo do chip. Só tira o sujeito quando ele é redundante ("A criança..." em
+ * todas), porque cortar "Os pais ou responsáveis" transformaria a pergunta em
+ * "têm deficiência" — de quem? O texto inteiro fica no title e o CSS trunca.
+ */
+function rotuloCurto(texto) {
+  const t = String(texto || '').replace(/\?\s*$/, '').trim()
+  const sem = t.replace(/^(A crian\u00e7a|A fam\u00edlia da crian\u00e7a)\s+/i, '')
+  // "A criança ou alguém do convívio..." vira "Ou alguém do convívio...", que
+  // lê pior do que o original: nesse caso o sujeito fica
+  if (!sem || sem === t || /^ou\s/i.test(sem)) return t
+  return sem.charAt(0).toUpperCase() + sem.slice(1)
+}
 
 // ilustrações de linha, inline: nada de rede, nada de biblioteca
 const ILUSTRACOES = {
@@ -79,13 +176,14 @@ export default function Dados() {
 
   if (!dados) {
     return (
-      <div className="pagina wizard">
-        <aside className="contexto">
+      <div className="pagina wz">
+        <style>{CSS}</style>
+        <div className="wz-topo">
           <Cabecalho voltar="/entrar" />
           <Passos atual="dados" />
-          <AvisoDemo />
-        </aside>
-        <main className="palco">
+        </div>
+        <AvisoDemo />
+        <main className="wz-palco">
           {erro ? <Erro>{erro}</Erro> : <Carregando>Consultando os cadastros da Prefeitura…</Carregando>}
         </main>
       </div>
@@ -109,14 +207,32 @@ export default function Dados() {
     (etapa >= 3 && resp[pendentes[etapa - 3]?.id] !== undefined)
 
   // transição curta: não pode atrasar quem responde rápido
-  function ir(delta) {
+  function irPara(n) {
+    const alvo = Math.max(0, Math.min(passos, n))
     setErro('')
     setSaindo(true)
     setTimeout(() => {
-      setEtapa((e) => Math.max(0, Math.min(passos, e + delta)))
+      setEtapa(alvo)
       setSaindo(false)
     }, 110)
   }
+  const ir = (delta) => irPara(etapa + delta)
+
+  // uma etapa está respondida quando tem valor; é isso que libera o clique no
+  // histórico e o que desenha o check
+  function respondida(n) {
+    if (n === 1) return !!nasc
+    if (n === 2) return !!horario
+    const q = pendentes[n - 3]
+    return !!q && resp[q.id] !== undefined
+  }
+
+  const etapasHist = Array.from({ length: passos }, (_, i) => {
+    const n = i + 1
+    const q = pendentes[n - 3]
+    const texto = n === 1 ? 'Nascimento' : n === 2 ? 'Turno' : (q?.texto || `Pergunta ${n}`)
+    return { n, texto, curto: n <= 2 ? texto : rotuloCurto(texto), feita: respondida(n) }
+  })
 
   async function enviar() {
     setErro('')
@@ -270,44 +386,49 @@ export default function Dados() {
   }
 
   return (
-    <div className="pagina wizard">
-      {/* Coluna de contexto: persiste ao longo do wizard. O "a Prefeitura já
-          sabe N coisas por você" é o argumento mais forte da tela e sumia assim
-          que a pessoa entrava nas perguntas. */}
-      <aside className="contexto">
-        <Cabecalho voltar={etapa === 0 ? '/entrar' : undefined} info="A unidade pode pedir comprovação do que você declarar." />
+    <div className="pagina wz">
+      <style>{CSS}</style>
+
+      {/* Faixa 1: onde a família está no processo. Atravessa a tela em vez de
+          morar numa coluna — o conteúdo abaixo usa a largura toda. */}
+      <div className="wz-topo">
+        <Cabecalho
+          voltar={etapa === 0 ? '/entrar' : undefined}
+          info="A unidade pode pedir comprovação do que você declarar."
+        />
         <Passos atual="dados" />
-        <AvisoDemo />
+      </div>
 
-        {etapa > 0 && (
-          <div className="progresso">
-            <div className="barra"><i style={{ width: `${(passoAtual / passos) * 100}%` }} /></div>
-            <span>{passoAtual} de {passos}</span>
-          </div>
-        )}
+      <AvisoDemo />
 
-        {etapa > 0 && validadas.length > 0 && (
-          <section className="ja-sabe">
-            <h2>
-              A Prefeitura já confirmou
-              {pontosConfirmados > 0 && <span className="pontos">{pontosConfirmados} pts</span>}
-            </h2>
-            <ul className="validadas compacta">
-              {validadas.map((q) => (
-                <li key={q.id} className={q.valor ? 'sim' : 'nao'}>
-                  <span className="mk2">
-                    {q.valor ? <Icone nome="check" tamanho={9} largura={3.5} /> : <span className="tracinho" />}
-                  </span>
-                  <span>{q.texto}<small>{q.fonte}</small></span>
-                </li>
-              ))}
-            </ul>
-            <p className="ajuda">Você não responde nada disto. Se algo estiver errado, procure o CRAS ou a unidade.</p>
-          </section>
-        )}
-      </aside>
+      {/* Faixa 2: o progresso dentro do formulário. Cada pergunta pelo nome,
+          com check no que já foi respondido, e clicável para voltar. */}
+      {etapa > 0 && (
+        <nav className="wz-hist" aria-label={`Perguntas: ${passoAtual} de ${passos}`}>
+          {etapasHist.map((e) => {
+            const agora = e.n === etapa
+            const clicavel = !agora && (e.n < etapa || e.feita)
+            return (
+              <button
+                key={e.n}
+                type="button"
+                title={e.texto}
+                aria-current={agora ? 'step' : undefined}
+                disabled={!clicavel}
+                data-clicavel={clicavel ? 'sim' : 'nao'}
+                className={`wz-chip${e.feita && !agora ? ' feita' : ''}${agora ? ' agora' : ''}`}
+                onClick={clicavel ? () => irPara(e.n) : undefined}
+                ref={agora ? (el) => el?.scrollIntoView({ block: 'nearest', inline: 'nearest' }) : undefined}
+              >
+                <b>{e.feita && !agora ? <Icone nome="check" tamanho={10} largura={4} /> : e.n}</b>
+                <span>{e.curto}</span>
+              </button>
+            )
+          })}
+        </nav>
+      )}
 
-      <main className="palco">
+      <main className="wz-palco">
         <div className={`etapa${saindo ? ' saindo' : ''}`} key={etapa}>{conteudo}</div>
 
         <Erro>{erro}</Erro>
