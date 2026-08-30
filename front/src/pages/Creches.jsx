@@ -402,13 +402,17 @@ export default function Creches() {
             </ul>
           ) : (
             <>
-              <ul className="list recomendadas">
-                <li className="secao destaque">
-                  <Icone nome="check" tamanho={12} largura={3.5} />
-                  Recomendadas para você
-                </li>
-                {recomendadas.map((r, i) => <Item key={r.cod} u={r} posicao={i + 1} />)}
-              </ul>
+              {/* sem recomendação não há seção: um cabeçalho "Recomendadas para
+                  você" sobre uma lista vazia promete o que não entrega */}
+              {recomendadas.length > 0 && (
+                <ul className="list recomendadas">
+                  <li className="secao destaque">
+                    <Icone nome="check" tamanho={12} largura={3.5} />
+                    Recomendadas para você
+                  </li>
+                  {recomendadas.map((r, i) => <Item key={r.cod} u={r} posicao={i + 1} />)}
+                </ul>
+              )}
 
               <ul className="list">
                 <li className="secao">
